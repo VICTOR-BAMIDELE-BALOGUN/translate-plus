@@ -1,0 +1,79 @@
+// Free translation with two keyless providers, a small cache and timeouts.
+// Primary: Google's public web endpoint (unofficial, no key). Fallback: MyMemory (official free tier).
+
+export type TranslateResult = { text: string; detected?: string; provider: 'google' | 'mymemory' | 'none' };
+export type Provider = 'google' | 'mymemory';
+
+const cache = new Map<string, TranslateResult>();
+const CACHE_MAX = 400;
+const TIMEOUT_MS = 6000;
+
+async function fetchJson(url: string): Promise<any> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function parseGoogle(data: any): TranslateResult {
+  if (!Array.isArray(data) || !Array.isArray(data[0])) throw new Error('Unexpected response');
+  const text = data[0].map((seg: any) => (Array.isArray(seg) && typeof seg[0] === 'string' ? seg[0] : '')).join('');
+  if (!text) throw new Error('Empty translation');
+  return { text, detected: typeof data[2] === 'string' ? data[2] : undefined, provider: 'google' };
+}
+
+export function parseMyMemory(data: any): TranslateResult {
+  const text = data?.responseData?.translatedText;
+  if (typeof text !== 'string' || !text || Number(data?.responseStatus) >= 400) {
+    throw new Error(typeof data?.responseDetails === 'string' && data.responseDetails ? data.responseDetails : 'Translation failed');
+  }
+  const detected = data?.responseData?.detectedLanguage;
+  return { text, detected: typeof detected === 'string' ? detected : undefined, provider: 'mymemory' };
+}
+
+async function google(text: string, from: string, to: string): Promise<TranslateResult> {
+  const url =
+    'https://translate.googleapis.com/translate_a/single?client=gtx&dt=t' +
+    `&sl=${encodeURIComponent(from)}&tl=${encodeURIComponent(to)}&q=${encodeURIComponent(text)}`;
+  return parseGoogle(await fetchJson(url));
+}
+
+async function myMemory(text: string, from: string, to: string): Promise<TranslateResult> {
+  const src = from === 'auto' ? 'autodetect' : from;
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 480))}&langpair=${encodeURIComponent(src)}|${encodeURIComponent(to)}`;
+  return parseMyMemory(await fetchJson(url));
+}
+
+const base = (code: string) => code.toLowerCase().split('-')[0];
+
+export async function translate(text: string, from: string, to: string, prefer: Provider = 'google'): Promise<TranslateResult> {
+  const clean = text.trim();
+  if (!clean) return { text: '', provider: 'none' };
+  if (from !== 'auto' && base(from) === base(to) && from === to) return { text: clean, detected: from, provider: 'none' };
+  const key = `${from}|${to}|${clean}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+
+  const order = prefer === 'google' ? [google, myMemory] : [myMemory, google];
+  let lastError: unknown;
+  for (const fn of order) {
+    try {
+      const out = await fn(clean, from, to);
+      if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value as string);
+      cache.set(key, out);
+      return out;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw new Error(`Translation unavailable. Check your connection. (${lastError instanceof Error ? lastError.message : 'error'})`);
+}
+
+export function clearTranslateCache() {
+  cache.clear();
+}

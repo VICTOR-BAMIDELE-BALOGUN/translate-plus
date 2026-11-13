@@ -3,6 +3,7 @@
 // on weak data) and the other phone translates it and speaks it aloud.
 import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Text, TextInput, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { Btn, ErrorText, styles } from '../components/ui';
 import { usePalette } from '../theme';
@@ -24,6 +25,7 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
   const [inCall, setInCall] = useState(false);
   const [partial, setPartial] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const conn = useRef<RoomConnection | null>(null);
   const inCallRef = useRef(false);
   const flat = useRef<FlatList<ChatMessage>>(null);
@@ -64,7 +66,7 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
       c.close();
       conn.current = null;
       stopSpeaking();
-      deactivateKeepAwake('tplus-call');
+      deactivateKeepAwake('tplus-call').catch(() => {});
     };
   }, [room.code, settings.brokerUrl]);
 
@@ -97,7 +99,7 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
       mic.stop();
       stopSpeaking();
       conn.current?.send('call-leave');
-      deactivateKeepAwake('tplus-call');
+      deactivateKeepAwake('tplus-call').catch(() => {});
       return;
     }
     const ok = await mic.start(getSettings().myLang);
@@ -107,6 +109,18 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
     conn.current?.send('call-join');
     activateKeepAwakeAsync('tplus-call').catch(() => {});
   };
+
+  // if the microphone stops on its own (permission refused, recognition failed), end the call
+  // instead of leaving it looking active while nothing is being heard
+  useEffect(() => {
+    if (inCall && !mic.listening) {
+      inCallRef.current = false;
+      setInCall(false);
+      stopSpeaking();
+      conn.current?.send('call-leave');
+      deactivateKeepAwake('tplus-call').catch(() => {});
+    }
+  }, [inCall, mic.listening]);
 
   const now = Date.now();
   const online = Object.values(peers).filter((x) => now - x.seen < 70000);
@@ -131,6 +145,19 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
         <Btn small kind="ghost" label="Invite" onPress={() => shareRoom(room)} />
         <Btn small kind={inCall ? 'danger' : 'primary'} label={inCall ? 'End call' : 'Call'} onPress={toggleCall} />
       </View>
+
+      <Text
+        accessibilityRole="button"
+        accessibilityLabel="Copy invite code"
+        onPress={async () => {
+          await Clipboard.setStringAsync(room.code).catch(() => {});
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }}
+        style={{ color: p.sub, fontSize: 12, paddingHorizontal: 12, paddingVertical: 6 }}
+      >
+        Invite code: <Text style={{ color: p.text, fontWeight: '700' }}>{room.code}</Text> · {copied ? 'copied' : 'tap to copy'}
+      </Text>
 
       {inCall ? (
         <View style={{ padding: 12, backgroundColor: p.cardAlt }}>

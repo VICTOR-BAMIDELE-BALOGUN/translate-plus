@@ -62,5 +62,12 @@ npm test            # encryption, translation parsing, fallback and cache
 ```
 
 ## Status of testing
-Type-checked, unit-tested and bundled for Android. It has **not yet been run on a physical phone**;
-microphone, speech and audio behaviour must be confirmed on the device.
+- Type-checked; unit tests for encryption, translation parsing, fallback and cache.
+- Bundled for Android, and the native Android project generates cleanly.
+- 29 end-to-end checks run in a headless browser with two simulated devices and a local relay
+  (`tests/e2e`): every tab, translation, language picker, history, settings persistence, creating and
+  joining a chat, two-way translated messages, call signalling, wrong-key messages ignored.
+- MyMemory was called live and returned correct translations with language detection.
+
+**Not yet verified, because it needs a real phone:** microphone and speech recognition, spoken output,
+voice-clone recording and upload, captions during a WhatsApp call, the public relay, and the APK build itself.

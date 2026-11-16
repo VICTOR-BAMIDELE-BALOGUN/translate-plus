@@ -120,3 +120,32 @@ export function open<T = any>(payload: string, key: Uint8Array): T | null {
     return null;
   }
 }
+
+// ---- call links ----
+// The room code is also the encryption key, so it travels in the URL fragment
+// (after #), which browsers never send to the hosting server.
+
+export type Invite = { code: string; name: string; lang: string };
+
+export function buildInviteLink(base: string, code: string, name: string, lang: string): string {
+  const root = base.trim().replace(/[#?].*$/, '').replace(/\/+$/, '');
+  const parts = [`j=${normalizeCode(code)}`];
+  if (name.trim()) parts.push(`n=${encodeURIComponent(name.trim().slice(0, 40))}`);
+  if (lang) parts.push(`l=${encodeURIComponent(lang)}`);
+  return `${root}/#${parts.join('&')}`;
+}
+
+export function parseInvite(hashOrUrl: string): Invite | null {
+  const hash = hashOrUrl.includes('#') ? hashOrUrl.slice(hashOrUrl.indexOf('#') + 1) : hashOrUrl;
+  if (!hash) return null;
+  const params = new URLSearchParams(hash);
+  const raw = params.get('j');
+  if (!raw) return null;
+  const code = formatCode(raw);
+  if (!isValidCode(code)) return null;
+  return {
+    code,
+    name: (params.get('n') || 'Someone').slice(0, 40),
+    lang: params.get('l') || 'en',
+  };
+}

@@ -4,11 +4,15 @@ import { Btn, Card, ErrorText, Label, styles } from '../components/ui';
 import { usePalette } from '../theme';
 import { addRoom, removeRoom, useStore, type Room } from '../store';
 import { formatCode, generateCode, isValidCode } from '../services/codec';
+import { getSettings } from '../store';
+import { buildInviteLink } from '../invite';
 
 export function shareRoom(room: Room) {
-  Share.share({
-    message: `Join me on Translate+ — we each write and speak our own language.\nOpen Chats → Join and enter this code:\n${room.code}`,
-  }).catch(() => {});
+  const s = getSettings();
+  const message = s.linkBase
+    ? `Let's talk — we each use our own language. Open this link, no app needed:\n${buildInviteLink(s.linkBase, room.code, s.displayName || 'A friend', s.targetLang)}`
+    : `Join me on Translate+ — we each write and speak our own language.\nOpen Chats → Join and enter this code:\n${room.code}`;
+  Share.share({ message }).catch(() => {});
 }
 
 export default function ChatsScreen(props: { onOpen: (room: Room) => void }) {

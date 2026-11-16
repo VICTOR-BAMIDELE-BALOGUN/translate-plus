@@ -156,9 +156,46 @@ with sync_playwright() as pw:
     check('spoken call phrase from another phone arrives translated', b.locator('text=Giulia · call').count() == 1)
     check('message encrypted with a different code is ignored', b.locator('text=wrong key').count() == 0)
 
+    # 7b a guest joining by shared link, in a browser, with nothing installed
+    g = browser.new_context(viewport={'width': 393, 'height': 851})
+    g.route(re.compile(r'translate\.googleapis\.com|mymemory'), mock)
+    gp = g.new_page()
+    gerr = []
+    gp.on('pageerror', lambda e: gerr.append(str(e)))
+    gp.goto(URL); gp.wait_for_selector('text=Translate')
+    set_relay(gp)  # same origin, so the guest keeps this when the link opens
+    gp.wait_for_timeout(700)  # the store writes on a short debounce
+    gp.goto(URL + '#j=' + code.replace('-', '') + '&n=Victor&l=it')
+    gp.reload()  # a hash-only change does not reload a single-page app
+    gp.wait_for_selector('text=Victor wants to talk with you', timeout=10000)
+    check('shared link opens a join page naming the inviter', True)
+    check('link pre-selects the language it was sent with', gp.get_by_role('button', name=re.compile('Italian')).count() >= 1)
+    gp.get_by_role('button', name=re.compile('^Join in')).click()
+    gp.wait_for_selector('text=Connected', timeout=10000)
+    check('guest joins the encrypted room from the link', True)
+
+    a.get_by_placeholder('Message in your language').fill('Good evening, are you still free tomorrow?')
+    a.get_by_role('button', name='Send').click()
+    gp.wait_for_selector('text=[it] Good evening, are you still free tomorrow?', timeout=10000)
+    check('guest sees the host message in their own language', True)
+
+    gp.get_by_placeholder(re.compile('^Type in')).fill('Certo, a che ora?')
+    gp.get_by_role('button', name='Send').click()
+    a.wait_for_selector('text=[en] Certo, a che ora?', timeout=10000)
+    check('host receives the guest reply, translated back', True)
+    gp.screenshot(path='guest.png')
+    check('guest page threw no errors', len(gerr) == 0, gerr[:3])
+
+    # a link with a damaged code must not open a room
+    bad = browser.new_context(viewport={'width': 393, 'height': 851})
+    bp = bad.new_page()
+    bp.goto(URL + '#j=ABC'); bp.wait_for_selector('text=Translate', timeout=10000)
+    check('a broken link falls back to the normal app', bp.get_by_role('tab', name='Chats').count() == 1)
+    bad.close()
+
     # 8 offline handling
     a.get_by_role('button', name='‹ Back').click()
-    check('chat list shows last message', a.locator('text=[en] Pronto, chi parla?').count() == 1)
+    check('chat list shows last message', a.locator('text=[en] Certo, a che ora?').count() >= 1)
     a.reload(); a.wait_for_selector('text=Translate'); tab(a, 'Chats')
     check('chats persist after restart', a.get_by_text('Marco', exact=True).count() >= 1)
 

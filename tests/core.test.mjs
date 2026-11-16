@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, generateCode, isValidCode, formatCode, normalizeCode } from '../src/services/codec.ts';
+import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, generateCode, isValidCode, formatCode, normalizeCode, buildInviteLink, parseInvite } from '../src/services/codec.ts';
 import { translate, parseGoogle, parseMyMemory, clearTranslateCache, chooseRoute } from '../src/services/translate.ts';
 
 test('utf8 and base64 round-trip, including emoji and non-Latin text', () => {
@@ -95,4 +95,37 @@ test('offline/online routing', () => {
 
   // a phone with no models at all still works online
   assert.equal(chooseRoute('offlineFirst', 'it', 'en', sup, []).use, 'online');
+});
+
+test('call links carry the room code in the fragment and survive a round trip', () => {
+  const code = generateCode();
+  const link = buildInviteLink('https://victor.github.io/translate-plus/', code, 'Victor Balogun', 'it');
+
+  // the code is after the # so the hosting server never receives it
+  assert.ok(link.includes('#'));
+  assert.ok(!link.slice(0, link.indexOf('#')).includes(code.replace(/-/g, '')));
+  assert.ok(!link.includes('?'));
+  assert.equal(link.split('#')[0], 'https://victor.github.io/translate-plus/');
+
+  const back = parseInvite(link);
+  assert.equal(back.code, code);
+  assert.equal(back.name, 'Victor Balogun');
+  assert.equal(back.lang, 'it');
+
+  // a bare fragment works too, which is what the browser hands us
+  assert.deepEqual(parseInvite('#' + link.split('#')[1]), back);
+
+  // trailing slashes, existing fragments and query strings are cleaned off the base
+  assert.equal(buildInviteLink('https://x.dev///', code, '', '').split('#')[0], 'https://x.dev/');
+  assert.equal(buildInviteLink('https://x.dev/#old', code, '', 'en').split('#')[0], 'https://x.dev/');
+
+  // junk links are rejected rather than opening an unusable room
+  assert.equal(parseInvite('https://x.dev/'), null);
+  assert.equal(parseInvite('#j=ABC'), null);
+  assert.equal(parseInvite(''), null);
+
+  // a link with no name still opens
+  const bare = parseInvite(buildInviteLink('https://x.dev', code, '', ''));
+  assert.equal(bare.name, 'Someone');
+  assert.equal(bare.lang, 'en');
 });

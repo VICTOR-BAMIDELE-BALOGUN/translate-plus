@@ -9,6 +9,7 @@ import { lastVoiceError, speak, stopSpeaking } from '../services/tts';
 import { clearTranslateCache } from '../services/translate';
 import { downloadOfflineModel, offlineAvailable, offlineLanguageCodes, offlineSupported } from '../services/offline';
 import { langName } from '../languages';
+import { buildInviteLink } from '../invite';
 
 const SAMPLE_TEXT =
   'Hello, this is my voice. I am recording a short sample so that my translations can sound like me. ' +
@@ -287,6 +288,7 @@ export default function SettingsScreen() {
   const p = usePalette();
   const s = useSettings();
   const [broker, setBroker] = useState(s.brokerUrl);
+  const [link, setLink] = useState(s.linkBase);
   const rate = (d: number) => updateSettings({ speechRate: Math.min(1.5, Math.max(0.6, Math.round((s.speechRate + d) * 10) / 10)) });
   const size = (d: number) => updateSettings({ captionSize: Math.min(40, Math.max(16, s.captionSize + d)) });
 
@@ -337,6 +339,36 @@ export default function SettingsScreen() {
         <Label>Display</Label>
         <Choice value={s.theme} onChange={(v) => updateSettings({ theme: v })} options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'system', label: 'Match phone' }]} />
         <Stepper title="Caption text size" value={String(s.captionSize)} onMinus={() => size(-2)} onPlus={() => size(2)} />
+      </Card>
+
+      <Card>
+        <Label>Call links</Label>
+        <TextInput
+          value={link}
+          onChangeText={setLink}
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="https://yourname.github.io/translate-plus"
+          placeholderTextColor={p.sub}
+          style={[styles.input, { color: p.text, borderColor: p.line, backgroundColor: p.bg, fontSize: 13 }]}
+        />
+        <Text style={{ color: p.sub, fontSize: 12, marginVertical: 6, lineHeight: 18 }}>
+          Where your copy of the web app is published. With this set, Invite shares a link the other person opens in their browser — no app to install. Leave it empty to share just the code.
+        </Text>
+        {s.linkBase ? (
+          <Text selectable style={{ color: p.sub, fontSize: 11, marginBottom: 6 }} numberOfLines={2}>
+            Links look like: {buildInviteLink(s.linkBase, 'ABCD-EFGH-IJKL-MNOP', s.displayName || 'A friend', s.targetLang)}
+          </Text>
+        ) : null}
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Btn
+            small
+            label="Save"
+            disabled={link.trim() === s.linkBase || (!!link.trim() && !/^https?:\/\/.+/.test(link.trim()))}
+            onPress={() => updateSettings({ linkBase: link.trim() })}
+          />
+          <Btn small kind="ghost" label="Clear" onPress={() => { setLink(''); updateSettings({ linkBase: '' }); }} />
+        </View>
       </Card>
 
       <Card>

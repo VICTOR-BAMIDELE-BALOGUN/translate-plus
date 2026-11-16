@@ -15,9 +15,28 @@ Everything it depends on is free and needs no server of your own.
 | Live Captions | Rolling bilingual subtitles; partial sentences are translated while still being spoken | Free |
 | Captions on WhatsApp / other app calls | Call on speaker + Translate+ listening; reply bar speaks your answer in their language | Free |
 | Chats | Auto-translated messages, show original, tap to listen, dictation | Free public relay |
+| **Call links** | Share a link; the other person joins from their browser with nothing installed | Free (GitHub Pages) |
 | In-app translated call | Speech → text → sent encrypted → translated and spoken on the other phone | Free |
 | Voice clone | Fish Audio free model (`s2.1-pro-free`), 3 voice slots, your own API key | Free tier |
 | Settings | Languages, auto-translate, show original, engine, speaking speed, mic behaviour, voice, theme, caption size, relay, data reset | — |
+
+## Call links
+
+Invite shares a link instead of a code once you set a web address in Settings → Call links.
+The other person opens it in their browser, picks their language and joins — no app, no account.
+They speak or type in their language, you speak or type in yours, and each side translates what it
+receives.
+
+The room code is also the encryption key, so it is carried in the URL **fragment** (after `#`),
+which browsers never send to the server hosting the page. Whoever holds the link can read the
+conversation, so send it privately.
+
+To publish the page free of charge, push this repo to GitHub, enable Settings → Pages → Source:
+GitHub Actions, and the included `deploy-web.yml` workflow puts it at
+`https://<your-user>.github.io/<repo>/`. Put that address into Settings → Call links.
+
+Speech in the guest's browser uses the Web Speech API: it works in Chrome and Safari, and Firefox
+has no speech recognition, so guests there type instead. Reading and typing work everywhere.
 
 ## Offline mode
 
@@ -44,7 +63,7 @@ only sees an unreadable topic name and ciphertext. Anyone holding the code can r
   This needs a paid Twilio account, a server you host, and a paid server-side speech service; none of
   those accounts exist yet, so no code for it is included.
 - Listening inside a WhatsApp call without speaker. Android does not allow this for normal apps.
-- Photo/screenshot translation, AI writing suggestions, call links for people without the app.
+- Photo/screenshot translation and AI writing suggestions.
 - iOS build (same code, needs a paid Apple developer account).
 
 ## Get the APK (free)

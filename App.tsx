@@ -12,6 +12,8 @@ import CaptionsScreen from './src/screens/CaptionsScreen';
 import ChatsScreen from './src/screens/ChatsScreen';
 import RoomScreen from './src/screens/RoomScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import GuestScreen from './src/screens/GuestScreen';
+import { currentInvite, type Invite } from './src/invite';
 
 // secure randomness for encryption nonces and invite codes
 nacl.setPRNG((x, n) => {
@@ -33,6 +35,7 @@ function Shell() {
   const { ready, settings } = useStore();
   const [tab, setTab] = useState<Tab>('translate');
   const [room, setRoom] = useState<Room | null>(null);
+  const [invite] = useState<Invite | null>(() => currentInvite());
 
   useEffect(() => {
     loadStore();
@@ -60,6 +63,16 @@ function Shell() {
       <View style={{ flex: 1, backgroundColor: p.bg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={p.accent} />
       </View>
+    );
+  }
+
+  // opened from a shared call link: show only the guest conversation
+  if (invite) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
+        <StatusBar style={lightBar ? 'dark' : 'light'} />
+        <GuestScreen invite={invite} />
+      </SafeAreaView>
     );
   }
 

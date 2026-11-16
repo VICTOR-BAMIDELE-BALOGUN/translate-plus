@@ -13,6 +13,7 @@ import { translate } from '../services/translator';
 import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import { shareRoom } from './ChatsScreen';
+import { buildInviteLink } from '../invite';
 
 export default function RoomScreen(props: { room: Room; onBack: () => void }) {
   const { room } = props;
@@ -150,13 +151,18 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
         accessibilityRole="button"
         accessibilityLabel="Copy invite code"
         onPress={async () => {
-          await Clipboard.setStringAsync(room.code).catch(() => {});
+          const payload = settings.linkBase
+            ? buildInviteLink(settings.linkBase, room.code, settings.displayName || 'A friend', settings.targetLang)
+            : room.code;
+          await Clipboard.setStringAsync(payload).catch(() => {});
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
         }}
         style={{ color: p.sub, fontSize: 12, paddingHorizontal: 12, paddingVertical: 6 }}
       >
-        Invite code: <Text style={{ color: p.text, fontWeight: '700' }}>{room.code}</Text> · {copied ? 'copied' : 'tap to copy'}
+        {settings.linkBase ? 'Call link' : 'Invite code'}:{' '}
+        <Text style={{ color: p.text, fontWeight: '700' }}>{settings.linkBase ? 'ready to share' : room.code}</Text> ·{' '}
+        {copied ? 'copied' : 'tap to copy'}
       </Text>
 
       {inCall ? (

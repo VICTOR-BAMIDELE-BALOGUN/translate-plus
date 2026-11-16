@@ -22,6 +22,7 @@ export type Settings = {
   theme: 'dark' | 'light' | 'system';
   captionSize: number;
   brokerUrl: string;
+  linkBase: string;
 };
 
 export const DEFAULT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
@@ -46,6 +47,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'dark',
   captionSize: 22,
   brokerUrl: DEFAULT_BROKER,
+  linkBase: '',
 };
 
 export type HistoryItem = { id: string; from: string; to: string; source: string; result: string; ts: number };

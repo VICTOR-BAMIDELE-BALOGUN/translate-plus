@@ -9,7 +9,8 @@ import { lastVoiceError, speak, stopSpeaking } from '../services/tts';
 import { clearTranslateCache } from '../services/translate';
 import { downloadOfflineModel, offlineAvailable, offlineLanguageCodes, offlineSupported } from '../services/offline';
 import { langName } from '../languages';
-import { buildInviteLink } from '../invite';
+import { buildInviteLink, defaultLinkBase } from '../invite';
+import { IOS_STEPS, runInstall, useInstallState } from '../components/InstallPrompt';
 
 const SAMPLE_TEXT =
   'Hello, this is my voice. I am recording a short sample so that my translations can sound like me. ' +
@@ -284,6 +285,28 @@ function OfflineCard() {
   );
 }
 
+
+function InstallCard() {
+  const p = usePalette();
+  const state = useInstallState();
+  if (state === 'none') return null;
+  return (
+    <Card>
+      <Label>Install on this device</Label>
+      {state === 'prompt' ? (
+        <>
+          <Text style={{ color: p.sub, fontSize: 13, marginBottom: 10, lineHeight: 19 }}>
+            Add Translate+ to your home screen. It opens full screen, like any other app, and keeps working without a connection for everything that does not need one.
+          </Text>
+          <Btn label="Install Translate+" onPress={runInstall} style={{ alignSelf: 'flex-start' }} />
+        </>
+      ) : (
+        <Text style={{ color: p.sub, fontSize: 13, lineHeight: 19 }}>{IOS_STEPS}</Text>
+      )}
+    </Card>
+  );
+}
+
 export default function SettingsScreen() {
   const p = usePalette();
   const s = useSettings();
@@ -341,6 +364,8 @@ export default function SettingsScreen() {
         <Stepper title="Caption text size" value={String(s.captionSize)} onMinus={() => size(-2)} onPlus={() => size(2)} />
       </Card>
 
+      <InstallCard />
+
       <Card>
         <Label>Call links</Label>
         <TextInput
@@ -353,11 +378,12 @@ export default function SettingsScreen() {
           style={[styles.input, { color: p.text, borderColor: p.line, backgroundColor: p.bg, fontSize: 13 }]}
         />
         <Text style={{ color: p.sub, fontSize: 12, marginVertical: 6, lineHeight: 18 }}>
-          Where your copy of the web app is published. With this set, Invite shares a link the other person opens in their browser — no app to install. Leave it empty to share just the code.
+          Where your copy of the web app is published. Invite then shares a link the other person opens in their browser — no app to install. The web version fills this in by itself; the installed Android app needs it typed once.
         </Text>
-        {s.linkBase ? (
+        {s.linkBase || defaultLinkBase() ? (
           <Text selectable style={{ color: p.sub, fontSize: 11, marginBottom: 6 }} numberOfLines={2}>
-            Links look like: {buildInviteLink(s.linkBase, 'ABCD-EFGH-IJKL-MNOP', s.displayName || 'A friend', s.targetLang)}
+            Links look like:{' '}
+            {buildInviteLink(s.linkBase || defaultLinkBase(), 'ABCD-EFGH-IJKL-MNOP', s.displayName || 'A friend', s.targetLang)}
           </Text>
         ) : null}
         <View style={{ flexDirection: 'row', gap: 8 }}>

@@ -1,5 +1,6 @@
-# Publishes the web version to GitHub Pages, free. That page is what a call link opens.
-# Enable once in the repo: Settings → Pages → Source: GitHub Actions.
+# Publishes the web version to GitHub Pages, free. That page is what a call link opens,
+# and it is also what you install on Android or iPhone from the browser.
+# Enable once in the repo: Settings -> Pages -> Source: GitHub Actions.
 name: Deploy web app
 on:
   push:
@@ -22,7 +23,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+      # Pages serves the site under /<repo>/, so the bundle needs that prefix
       - run: npx expo export --platform web --output-dir dist
+        env:
+          EXPO_BASE_URL: /${{ github.event.repository.name }}
+      - run: node tests/check-web-build.mjs dist
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

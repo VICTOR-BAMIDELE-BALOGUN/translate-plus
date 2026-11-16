@@ -14,6 +14,7 @@ import RoomScreen from './src/screens/RoomScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import GuestScreen from './src/screens/GuestScreen';
 import { currentInvite, type Invite } from './src/invite';
+import { InstallBanner } from './src/components/InstallPrompt';
 
 // secure randomness for encryption nonces and invite codes
 nacl.setPRNG((x, n) => {
@@ -83,6 +84,7 @@ function Shell() {
         <RoomScreen key={room.code} room={room} onBack={() => setRoom(null)} />
       ) : (
         <>
+          <InstallBanner />
           <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6, flexDirection: 'row', alignItems: 'baseline' }}>
             <Text style={{ color: p.text, fontSize: 24, fontWeight: '900', letterSpacing: -0.5 }}>Translate</Text>
             <Text style={{ color: p.accent, fontSize: 24, fontWeight: '900' }}>+</Text>

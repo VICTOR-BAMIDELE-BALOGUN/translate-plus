@@ -199,6 +199,31 @@ with sync_playwright() as pw:
     a.reload(); a.wait_for_selector('text=Translate'); tab(a, 'Chats')
     check('chats persist after restart', a.get_by_text('Marco', exact=True).count() >= 1)
 
+    # 9 installable web app
+    w = browser.new_context(viewport={'width': 393, 'height': 851})
+    wp = w.new_page()
+    werr = []
+    wp.on('pageerror', lambda e: werr.append(str(e)))
+    wp.goto(URL); wp.wait_for_selector('text=Translate'); wp.wait_for_timeout(2500)
+    sw = wp.evaluate("async () => { const r = await navigator.serviceWorker.getRegistration(); return r && r.active ? 'active' : 'no'; }")
+    check('service worker installs', sw == 'active', sw)
+    mf = wp.evaluate("async () => { const r = await fetch('./manifest.json'); const j = await r.json(); return [j.display, j.icons.filter(i => i.purpose === 'maskable').length]; }")
+    check('manifest is installable (standalone + maskable icon)', mf[0] == 'standalone' and mf[1] >= 1, mf)
+    # the web build knows its own address, so call links need no configuration there
+    wp.get_by_role('tab', name='Settings').click()
+    check('call links work with no setup on the web', wp.locator('text=Links look like').count() == 1)
+    w.set_offline(True)
+    wp.reload()
+    opened = True
+    try:
+        wp.wait_for_selector('text=Translate', timeout=8000)
+    except Exception:
+        opened = False
+    check('installed app opens with no connection', opened)
+    w.set_offline(False)
+    check('web app threw no errors', len(werr) == 0, werr[:3])
+    w.close()
+
     print('--- console errors A:', errA[:8]); print('--- console errors B:', errB[:8])
     browser.close()
 

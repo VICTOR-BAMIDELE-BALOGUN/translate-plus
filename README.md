@@ -16,9 +16,33 @@ Everything it depends on is free and needs no server of your own.
 | Captions on WhatsApp / other app calls | Call on speaker + Translate+ listening; reply bar speaks your answer in their language | Free |
 | Chats | Auto-translated messages, show original, tap to listen, dictation | Free public relay |
 | **Call links** | Share a link; the other person joins from their browser with nothing installed | Free (GitHub Pages) |
+| **Installable web app** | Add to the home screen on Android or iPhone, no app store, opens offline | Free |
 | In-app translated call | Speech → text → sent encrypted → translated and spoken on the other phone | Free |
 | Voice clone | Fish Audio free model (`s2.1-pro-free`), 3 voice slots, your own API key | Free tier |
 | Settings | Languages, auto-translate, show original, engine, speaking speed, mic behaviour, voice, theme, caption size, relay, data reset | — |
+
+## Install it from the web — no Play Store, no App Store
+
+The web build is a progressive web app, so both of you can install it straight from the browser.
+
+**Publish it once (free).** Push this repo to GitHub, then Settings → Pages → Source: GitHub Actions.
+The `deploy-web.yml` workflow builds it and puts it at `https://<your-user>.github.io/<repo>/`.
+It sets the base path automatically from the repo name, and `tests/check-web-build.mjs` fails the
+build if the result would not be installable.
+
+**Android.** Open that address in Chrome. The app shows an Install button, or use Chrome's menu →
+"Add to Home screen". It then opens full screen with its own icon.
+
+**iPhone and iPad.** Open the address in Safari, tap Share, then "Add to Home Screen". Safari has no
+install prompt, so the app shows those steps instead.
+
+Once installed it opens with no connection, because a service worker keeps the app itself on the
+device. Translating still needs the internet in the web version — the on-device models below are
+part of the Android app only.
+
+What differs from the installed Android app: speech recognition uses the browser's engine, which
+works in Chrome and Safari but not Firefox; offline translation models are not available; and the
+Android-specific microphone behaviour does not apply.
 
 ## Call links
 
@@ -64,7 +88,7 @@ only sees an unreadable topic name and ciphertext. Anyone holding the code can r
   those accounts exist yet, so no code for it is included.
 - Listening inside a WhatsApp call without speaker. Android does not allow this for normal apps.
 - Photo/screenshot translation and AI writing suggestions.
-- iOS build (same code, needs a paid Apple developer account).
+- A native iOS build (needs a paid Apple developer account). The installable web app covers iPhones instead.
 
 ## Get the APK (free)
 
@@ -102,9 +126,11 @@ npm test            # encryption, translation parsing, fallback and cache
 ## Status of testing
 - Type-checked; unit tests for encryption, translation parsing, fallback and cache.
 - Bundled for Android, and the native Android project generates cleanly.
-- 29 end-to-end checks run in a headless browser with two simulated devices and a local relay
+- 44 end-to-end checks run in a headless browser with two simulated devices and a local relay
   (`tests/e2e`): every tab, translation, language picker, history, settings persistence, creating and
-  joining a chat, two-way translated messages, call signalling, wrong-key messages ignored.
+  joining a chat, two-way translated messages, call signalling, wrong-key messages ignored, a guest
+  joining by shared link and talking in both directions, offline-mode routing, and the installable
+  web app (service worker, manifest, opening with the network switched off).
 - MyMemory was called live and returned correct translations with language detection.
 
 **Not yet verified, because it needs a real phone:** microphone and speech recognition, spoken output,

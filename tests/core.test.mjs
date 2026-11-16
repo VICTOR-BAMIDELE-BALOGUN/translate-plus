@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, generateCode, isValidCode, formatCode, normalizeCode } from '../src/services/codec.ts';
-import { translate, parseGoogle, parseMyMemory, clearTranslateCache } from '../src/services/translate.ts';
+import { translate, parseGoogle, parseMyMemory, clearTranslateCache, chooseRoute } from '../src/services/translate.ts';
 
 test('utf8 and base64 round-trip, including emoji and non-Latin text', () => {
   for (const s of ['hello', 'Ciao, come stai? È tutto a posto', 'Ẹ káàárọ̀', '你好 🌍👋🏾', '']) {
@@ -68,4 +68,31 @@ test('translate: caches, falls back to second provider, reports total failure', 
   globalThis.fetch = async () => { throw new Error('offline'); };
   clearTranslateCache();
   await assert.rejects(() => translate('Ciao', 'it', 'en'), /Translation unavailable/);
+});
+
+test('offline/online routing', () => {
+  const sup = (c) => ['en', 'it', 'fr'].includes(c);
+  const have = ['en', 'it'];
+
+  // online mode never uses the on-device model, even when it is ready
+  assert.equal(chooseRoute('online', 'it', 'en', sup, have).use, 'online');
+
+  // offline first: uses the model when both languages are downloaded
+  assert.equal(chooseRoute('offlineFirst', 'it', 'en', sup, have).use, 'offline');
+  // ...and goes online when one is missing, unsupported, or auto-detect
+  assert.equal(chooseRoute('offlineFirst', 'fr', 'en', sup, have).use, 'online');
+  assert.equal(chooseRoute('offlineFirst', 'yo', 'en', sup, have).use, 'online');
+  assert.equal(chooseRoute('offlineFirst', 'auto', 'en', sup, have).use, 'online');
+
+  // offline only: refuses rather than silently using the network, and says why
+  assert.equal(chooseRoute('offlineOnly', 'it', 'en', sup, have).use, 'offline');
+  const missing = chooseRoute('offlineOnly', 'fr', 'en', sup, have);
+  assert.equal(missing.use, 'error');
+  assert.match(missing.reason, /not downloaded/);
+  const auto = chooseRoute('offlineOnly', 'auto', 'en', sup, have);
+  assert.equal(auto.use, 'error');
+  assert.match(auto.reason, /auto-detect/);
+
+  // a phone with no models at all still works online
+  assert.equal(chooseRoute('offlineFirst', 'it', 'en', sup, []).use, 'online');
 });

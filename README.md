@@ -9,6 +9,7 @@ Everything it depends on is free and needs no server of your own.
 | Feature | How it works | Cost |
 |---|---|---|
 | Text translation, 60 languages, auto-detect | Google public endpoint, MyMemory as automatic fallback | Free, no key |
+| Offline translation, 49 languages | Google ML Kit on-device models, downloaded per language (~30 MB) | Free, no key, no internet |
 | Voice input | Android speech recognition (optionally on-device) | Free |
 | Face to Face | Split screen, top half rotated for the other person | Free |
 | Live Captions | Rolling bilingual subtitles; partial sentences are translated while still being spoken | Free |
@@ -18,12 +19,30 @@ Everything it depends on is free and needs no server of your own.
 | Voice clone | Fish Audio free model (`s2.1-pro-free`), 3 voice slots, your own API key | Free tier |
 | Settings | Languages, auto-translate, show original, engine, speaking speed, mic behaviour, voice, theme, caption size, relay, data reset | — |
 
+## Offline mode
+
+Settings has three translation modes:
+
+- **Online only** — always uses the internet services.
+- **Offline first** (default) — uses a downloaded on-device model when both languages are ready, otherwise goes online.
+- **Offline only** — never touches the network, and says so plainly when a language is missing.
+
+Combined with the "On-device speech recognition" toggle and the phone's built-in voices, the whole
+speaker-phone pipeline — hearing, translating, speaking — runs with no internet at all. It is also
+faster, since nothing waits on a network round trip.
+
+Auto-detect always needs the internet, because the on-device models require an explicit source language.
+Yoruba, Igbo, Hausa, Amharic, Zulu, Somali, Serbian, Punjabi, Nepali, Sinhala, Khmer and Burmese have
+no on-device model and always go online.
+
 Chats and calls are end-to-end encrypted (NaCl secretbox). The invite code is the key: the relay
 only sees an unreadable topic name and ciphertext. Anyone holding the code can read the chat.
 
 ## Not in version 1
 
 - Calls to real phone numbers (always paid, via a carrier such as Twilio) and the AI calling agent.
+  This needs a paid Twilio account, a server you host, and a paid server-side speech service; none of
+  those accounts exist yet, so no code for it is included.
 - Listening inside a WhatsApp call without speaker. Android does not allow this for normal apps.
 - Photo/screenshot translation, AI writing suggestions, call links for people without the app.
 - iOS build (same code, needs a paid Apple developer account).
@@ -71,3 +90,8 @@ npm test            # encryption, translation parsing, fallback and cache
 
 **Not yet verified, because it needs a real phone:** microphone and speech recognition, spoken output,
 voice-clone recording and upload, captions during a WhatsApp call, the public relay, and the APK build itself.
+
+**One known risk:** the on-device translation package (`@react-native-ml-kit/translate-text`) is an older
+library using React Native's legacy bridge, running here on React Native 0.88. Autolinking picks it up
+correctly, but if the build or the download button fails on the phone, that package is the first suspect.
+Everything else keeps working without it — the app falls back to online translation.

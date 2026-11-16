@@ -9,7 +9,7 @@ import { Btn, ErrorText, styles } from '../components/ui';
 import { usePalette } from '../theme';
 import { addMessage, getSettings, patchMessage, useStore, type ChatMessage, type Room } from '../store';
 import { RoomConnection, type RoomStatus, type Wire } from '../services/room';
-import { translate } from '../services/translate';
+import { translate } from '../services/translator';
 import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import { shareRoom } from './ChatsScreen';
@@ -46,7 +46,7 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
     const needs = s.autoTranslateChats || wire.kind === 'call';
     if (!needs) return;
     try {
-      const out = await translate(wire.text, wire.lang && wire.lang !== s.myLang ? wire.lang : 'auto', s.myLang, s.provider);
+      const out = await translate(wire.text, wire.lang && wire.lang !== s.myLang ? wire.lang : 'auto', s.myLang);
       patchMessage(room.code, wire.id, { translated: out.text });
       // speak calls only while I am in the call myself, and only if the phrase is fresh
       if (wire.kind === 'call' && inCallRef.current && Date.now() - wire.ts < 20000) speak(out.text, s.myLang);

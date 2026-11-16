@@ -77,3 +77,29 @@ export async function translate(text: string, from: string, to: string, prefer: 
 export function clearTranslateCache() {
   cache.clear();
 }
+
+// Route decision, kept here so it can be unit-tested without React Native.
+export type Mode = 'online' | 'offlineFirst' | 'offlineOnly';
+export type Route = { use: 'offline' | 'online' } | { use: 'error'; reason: string };
+
+export function chooseRoute(
+  mode: Mode,
+  from: string,
+  to: string,
+  isSupported: (code: string) => boolean,
+  downloaded: string[]
+): Route {
+  const ready =
+    from !== 'auto' && isSupported(from) && isSupported(to) && downloaded.includes(from) && downloaded.includes(to);
+  if (mode !== 'online' && ready) return { use: 'offline' };
+  if (mode === 'offlineOnly') {
+    return {
+      use: 'error',
+      reason:
+        from === 'auto'
+          ? 'Offline mode needs a specific language, not auto-detect. Pick the language or switch to online.'
+          : 'This language pair is not downloaded for offline use. Download it in Settings, or switch to online.',
+    };
+  }
+  return { use: 'online' };
+}

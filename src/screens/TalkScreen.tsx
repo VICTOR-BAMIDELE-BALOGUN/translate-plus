@@ -6,7 +6,7 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { ErrorText, LangButton } from '../components/ui';
 import { usePalette } from '../theme';
 import { updateSettings, useSettings } from '../store';
-import { translate } from '../services/translate';
+import { translate } from '../services/translator';
 import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import { langName } from '../languages';
@@ -33,7 +33,7 @@ export default function TalkScreen() {
     if (!final) return;
     const id = ++seq.current;
     try {
-      const out = await translate(text, from, to, s.provider);
+      const out = await translate(text, from, to);
       if (id !== seq.current) return;
       (side === 'me' ? setTheirs : setMine)((v) => ({ ...v, shown: out.text }));
       setError(null);

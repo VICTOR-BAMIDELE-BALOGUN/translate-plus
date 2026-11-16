@@ -7,7 +7,7 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { Btn, Card, ErrorText, LangButton, styles } from '../components/ui';
 import { usePalette } from '../theme';
 import { newId, updateSettings, useSettings } from '../store';
-import { translate } from '../services/translate';
+import { translate } from '../services/translator';
 import { speak } from '../services/tts';
 import { useListener } from '../services/listen';
 import { langName } from '../languages';
@@ -40,7 +40,7 @@ export default function CaptionsScreen() {
         partialTimer.current = null;
         const id = ++partialSeq.current;
         try {
-          const out = await translate(text, theirLang, s.myLang, s.provider);
+          const out = await translate(text, theirLang, s.myLang);
           if (id === partialSeq.current) setPartial((v) => (v.original ? { ...v, translated: out.text } : v));
         } catch {}
       }, 350);
@@ -51,7 +51,7 @@ export default function CaptionsScreen() {
       const id = newId();
       push({ id, original: text, translated: '…' });
       try {
-        const out = await translate(text, theirLang, s.myLang, s.provider);
+        const out = await translate(text, theirLang, s.myLang);
         setLines((prev) => prev.map((l) => (l.id === id ? { ...l, translated: out.text } : l)));
         setError(null);
       } catch (e) {
@@ -66,7 +66,7 @@ export default function CaptionsScreen() {
     if (!text) return;
     setReply('');
     try {
-      const out = await translate(text, s.myLang, theirLang, s.provider);
+      const out = await translate(text, s.myLang, theirLang);
       push({ id: newId(), original: text, translated: out.text, mine: true });
       speak(out.text, theirLang); // played out loud so the other person (or the call) hears it
     } catch (e) {

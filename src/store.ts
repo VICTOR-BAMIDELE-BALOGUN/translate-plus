@@ -17,6 +17,8 @@ export type Settings = {
   pauseMicWhileSpeaking: boolean;
   onDeviceRecognition: boolean;
   provider: 'google' | 'mymemory';
+  translationMode: 'online' | 'offlineFirst' | 'offlineOnly';
+  offlineLanguages: string[];
   theme: 'dark' | 'light' | 'system';
   captionSize: number;
   brokerUrl: string;
@@ -39,6 +41,8 @@ export const DEFAULT_SETTINGS: Settings = {
   pauseMicWhileSpeaking: true,
   onDeviceRecognition: false,
   provider: 'google',
+  translationMode: 'offlineFirst',
+  offlineLanguages: [],
   theme: 'dark',
   captionSize: 22,
   brokerUrl: DEFAULT_BROKER,

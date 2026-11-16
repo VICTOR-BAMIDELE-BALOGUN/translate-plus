@@ -4,7 +4,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Btn, Card, ErrorText, Label, LangButton, styles } from '../components/ui';
 import { usePalette } from '../theme';
 import { addHistory, updateSettings, useStore } from '../store';
-import { translate } from '../services/translate';
+import { translate } from '../services/translator';
 import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import { langName } from '../languages';
@@ -17,6 +17,7 @@ export default function TranslateScreen() {
   const [text, setText] = useState('');
   const [result, setResult] = useState('');
   const [detected, setDetected] = useState<string | undefined>();
+  const [offline, setOffline] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -43,10 +44,11 @@ export default function TranslateScreen() {
     const timer = setTimeout(async () => {
       setBusy(true);
       try {
-        const out = await translate(clean, from, to, settings.provider);
+        const out = await translate(clean, from, to);
         if (mine !== seq.current) return;
         setResult(out.text);
         setDetected(out.detected);
+        setOffline(!!out.offline);
         setError(null);
       } catch (e) {
         if (mine === seq.current) setError(e instanceof Error ? e.message : 'Translation failed');
@@ -118,7 +120,7 @@ export default function TranslateScreen() {
       </Card>
 
       <Card style={{ backgroundColor: p.cardAlt }}>
-        <Label>{langName(to)}{busy ? ' · translating…' : ''}</Label>
+        <Label>{langName(to)}{busy ? ' · translating…' : offline && result ? ' · on device' : ''}</Label>
         <Text selectable style={{ color: p.text, fontSize: 20, minHeight: 60, lineHeight: 28 }}>{result}</Text>
         <ErrorText>{error}</ErrorText>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>

@@ -7,6 +7,7 @@ import { DEFAULT_BROKER, clearHistory, resetAll, updateSettings, useSettings } f
 import { createVoice, deleteVoice, getFishKey, setFishKey } from '../services/fish';
 import { lastVoiceError, speak, stopSpeaking } from '../services/tts';
 import { clearTranslateCache } from '../services/translate';
+import { downloadOfflineModel, offlineAvailable, offlineLanguageCodes, offlineSupported } from '../services/offline';
 import { langName } from '../languages';
 
 const SAMPLE_TEXT =
@@ -187,6 +188,101 @@ function VoiceClone() {
   );
 }
 
+
+function OfflineCard() {
+  const p = usePalette();
+  const s = useSettings();
+  const [showAllOffline, setShowAllOffline] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const available = offlineAvailable();
+
+  const supported = offlineLanguageCodes();
+  // the two languages in use come first, then the rest alphabetically
+  const ordered = [
+    ...[s.myLang, s.targetLang].filter((c, i, a) => offlineSupported(c) && a.indexOf(c) === i),
+    ...supported.filter((c) => c !== s.myLang && c !== s.targetLang).sort((a, b) => langName(a).localeCompare(langName(b))),
+  ];
+
+  const get = async (code: string) => {
+    setBusy(code);
+    setError(null);
+    try {
+      await downloadOfflineModel(code);
+      if (!s.offlineLanguages.includes(code)) {
+        // English is the pivot, so it is always present once any model is fetched
+        const next = [...s.offlineLanguages, code];
+        if (!next.includes('en')) next.push('en');
+        updateSettings({ offlineLanguages: next });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Download failed. Check your connection.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const forget = (code: string) =>
+    updateSettings({ offlineLanguages: s.offlineLanguages.filter((c) => c !== code) });
+
+  return (
+    <Card>
+      <Label>Offline translation</Label>
+      <Choice
+        value={s.translationMode}
+        onChange={(v) => updateSettings({ translationMode: v })}
+        options={[
+          { value: 'online', label: 'Online only' },
+          { value: 'offlineFirst', label: 'Offline first' },
+          { value: 'offlineOnly', label: 'Offline only' },
+        ]}
+      />
+      <Text style={{ color: p.sub, fontSize: 12, marginTop: 8, lineHeight: 18 }}>
+        Downloaded languages translate on the phone with no internet, which is also faster. "Offline first" uses them when it can and goes online otherwise. Auto-detect always needs the internet.
+      </Text>
+      {!available ? (
+        <Text style={{ color: p.warm, fontSize: 12, marginTop: 8 }}>
+          Offline models are not part of this preview build. They work in the installed app.
+        </Text>
+      ) : null}
+
+      <View style={{ height: 12 }} />
+      <Label>Languages on this phone · {s.offlineLanguages.length}</Label>
+      <Text style={{ color: p.sub, fontSize: 12, marginBottom: 6 }}>
+        About 30 MB each. Download over Wi-Fi.
+      </Text>
+      {ordered.slice(0, showAllOffline ? ordered.length : 6).map((code) => {
+        const have = s.offlineLanguages.includes(code);
+        return (
+          <View key={code} style={styles.row}>
+            <Text style={{ color: have ? p.accent : p.text, flex: 1, fontWeight: have ? '700' : '400' }}>
+              {langName(code)}{have ? ' · ready' : ''}
+            </Text>
+            {busy === code ? (
+              <Text style={{ color: p.sub, fontSize: 13 }}>downloading…</Text>
+            ) : have ? (
+              <Btn small kind="ghost" label="Remove" onPress={() => forget(code)} />
+            ) : (
+              <Btn small kind="ghost" label="Download" onPress={() => get(code)} disabled={!available || !!busy} />
+            )}
+          </View>
+        );
+      })}
+      <Btn
+        small
+        kind="ghost"
+        style={{ alignSelf: 'flex-start', marginTop: 6 }}
+        label={showAllOffline ? 'Show fewer' : `Show all ${ordered.length} languages`}
+        onPress={() => setShowAllOffline(!showAllOffline)}
+      />
+      <ErrorText>{error}</ErrorText>
+      <Text style={{ color: p.sub, fontSize: 12, marginTop: 8, lineHeight: 18 }}>
+        Yoruba, Igbo, Hausa, Amharic, Zulu, Somali and some other languages have no on-device model, so they always need the internet.
+      </Text>
+    </Card>
+  );
+}
+
 export default function SettingsScreen() {
   const p = usePalette();
   const s = useSettings();
@@ -224,6 +320,8 @@ export default function SettingsScreen() {
         />
         <Text style={{ color: p.sub, fontSize: 12, marginTop: 6 }}>Both are free with no account. If one fails, the other is tried automatically.</Text>
       </Card>
+
+      <OfflineCard />
 
       <Card>
         <Label>Speech</Label>

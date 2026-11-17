@@ -16,6 +16,7 @@ export type Settings = {
   fishModel: string;
   pauseMicWhileSpeaking: boolean;
   onDeviceRecognition: boolean;
+  sentencePause: number; // ms of silence before a sentence counts as finished
   provider: 'google' | 'mymemory';
   translationMode: 'online' | 'offlineFirst' | 'offlineOnly';
   offlineLanguages: string[];
@@ -41,6 +42,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fishModel: 's2.1-pro-free',
   pauseMicWhileSpeaking: true,
   onDeviceRecognition: false,
+  sentencePause: 1500,
   provider: 'google',
   translationMode: 'offlineFirst',
   offlineLanguages: [],

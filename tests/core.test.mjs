@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, generateCode, isValidCode, formatCode, normalizeCode, buildInviteLink, parseInvite } from '../src/services/codec.ts';
-import { translate, parseGoogle, parseMyMemory, clearTranslateCache, chooseRoute } from '../src/services/translate.ts';
+import { translate, parseGoogle, parseMyMemory, clearTranslateCache, chooseRoute, splitForLength } from '../src/services/translate.ts';
 
 test('utf8 and base64 round-trip, including emoji and non-Latin text', () => {
   for (const s of ['hello', 'Ciao, come stai? È tutto a posto', 'Ẹ káàárọ̀', '你好 🌍👋🏾', '']) {
@@ -128,4 +128,24 @@ test('call links carry the room code in the fragment and survive a round trip', 
   const bare = parseInvite(buildInviteLink('https://x.dev', code, '', ''));
   assert.equal(bare.name, 'Someone');
   assert.equal(bare.lang, 'en');
+});
+
+test('long text is split, never silently truncated', () => {
+  assert.deepEqual(splitForLength('short', 450), ['short']);
+  assert.deepEqual(splitForLength('   ', 450), []);
+
+  const sentences = ('Questa e una frase di prova. ').repeat(60).trim(); // ~1700 chars
+  const parts = splitForLength(sentences, 450);
+  assert.ok(parts.length > 1);
+  for (const p of parts) assert.ok(p.length <= 450, `part too long: ${p.length}`);
+  // every word survives the split
+  assert.equal(parts.join(' ').replace(/\s+/g, ' '), sentences.replace(/\s+/g, ' '));
+  // it prefers to break at sentence ends
+  assert.ok(parts[0].endsWith('.'));
+
+  // text with no spaces at all still splits rather than being cut
+  const solid = 'a'.repeat(1000);
+  const hard = splitForLength(solid, 450);
+  assert.equal(hard.join('').length, 1000);
+  for (const p of hard) assert.ok(p.length <= 450);
 });

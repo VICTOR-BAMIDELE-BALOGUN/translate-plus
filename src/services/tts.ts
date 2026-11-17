@@ -116,7 +116,7 @@ export function speak(text: string, lang: string): Promise<void> {
       if (pending <= 0) {
         pending = 0;
         // short tail so the microphone doesn't catch the end of our own voice
-        tailTimer = setTimeout(() => setSpeaking(false), 250);
+        tailTimer = setTimeout(() => setSpeaking(false), 120);
       }
     });
   return chain;

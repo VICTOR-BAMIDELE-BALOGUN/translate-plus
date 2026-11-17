@@ -36,6 +36,13 @@ export function useListener(options: Options) {
         addsPunctuation: true,
         maxAlternatives: 1,
         requiresOnDeviceRecognition: getSettings().onDeviceRecognition,
+        // Android finalises after a silence and then stops; anything said during the
+        // restart is lost. Waiting longer before finalising keeps sentences whole.
+        androidIntentOptions: {
+          EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: getSettings().sentencePause,
+          EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: getSettings().sentencePause,
+          EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 1000,
+        },
       });
     } catch (e) {
       running.current = false;
@@ -62,7 +69,7 @@ export function useListener(options: Options) {
       }),
       ExpoSpeechRecognitionModule.addListener('end', () => {
         running.current = false;
-        if (want.current) scheduleRestart(150);
+        if (want.current) scheduleRestart(0);
       }),
       ExpoSpeechRecognitionModule.addListener('error', (event) => {
         running.current = false;
@@ -87,7 +94,7 @@ export function useListener(options: Options) {
         try {
           ExpoSpeechRecognitionModule.abort();
         } catch {}
-      } else scheduleRestart(100);
+      } else scheduleRestart(60);
     });
     return () => {
       subs.forEach((s) => s.remove());

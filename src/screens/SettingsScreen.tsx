@@ -353,6 +353,21 @@ export default function SettingsScreen() {
         <ToggleRow title="Speak translations aloud" hint="Face to Face mode" value={s.autoSpeak} onChange={(v) => updateSettings({ autoSpeak: v })} />
         <ToggleRow title="Pause mic while the app speaks" hint="Prevents the app hearing itself. Turn off only with headphones." value={s.pauseMicWhileSpeaking} onChange={(v) => updateSettings({ pauseMicWhileSpeaking: v })} />
         <ToggleRow title="On-device speech recognition" hint="Faster and works offline on Android 13+, for languages downloaded on the phone" value={s.onDeviceRecognition} onChange={(v) => updateSettings({ onDeviceRecognition: v })} />
+        <View style={{ height: 8 }} />
+        <Label>Pause before translating</Label>
+        <Choice
+          value={s.sentencePause <= 900 ? 'quick' : s.sentencePause >= 2200 ? 'patient' : 'normal'}
+          onChange={(v) => updateSettings({ sentencePause: v === 'quick' ? 800 : v === 'patient' ? 2500 : 1500 })}
+          options={[
+            { value: 'quick', label: 'Quick' },
+            { value: 'normal', label: 'Normal' },
+            { value: 'patient', label: 'Patient' },
+          ]}
+        />
+        <Text style={{ color: p.sub, fontSize: 12, marginTop: 6, lineHeight: 18 }}>
+          How long a silence counts as the end of a sentence. Quick translates sooner but can cut you off mid-sentence; Patient waits through your pauses.
+        </Text>
+
         <Stepper title="Speaking speed" value={s.speechRate.toFixed(1) + '×'} onMinus={() => rate(-0.1)} onPlus={() => rate(0.1)} />
       </Card>
 

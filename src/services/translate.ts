@@ -43,10 +43,37 @@ async function google(text: string, from: string, to: string): Promise<Translate
   return parseGoogle(await fetchJson(url));
 }
 
+const MYMEMORY_MAX = 450;
+
+/** MyMemory caps the query length, so long text is split on sentence or word breaks. */
+export function splitForLength(text: string, max = MYMEMORY_MAX): string[] {
+  const clean = text.trim();
+  if (clean.length <= max) return clean ? [clean] : [];
+  const out: string[] = [];
+  let rest = clean;
+  while (rest.length > max) {
+    const window = rest.slice(0, max);
+    let cut = Math.max(window.lastIndexOf('. '), window.lastIndexOf('? '), window.lastIndexOf('! '));
+    cut = cut > max * 0.4 ? cut + 1 : window.lastIndexOf(' ');
+    if (cut <= 0) cut = max; // one very long word: split it rather than lose it
+    out.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+
 async function myMemory(text: string, from: string, to: string): Promise<TranslateResult> {
   const src = from === 'auto' ? 'autodetect' : from;
-  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 480))}&langpair=${encodeURIComponent(src)}|${encodeURIComponent(to)}`;
-  return parseMyMemory(await fetchJson(url));
+  const ask = async (part: string) => {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(part)}&langpair=${encodeURIComponent(src)}|${encodeURIComponent(to)}`;
+    return parseMyMemory(await fetchJson(url));
+  };
+  const parts = splitForLength(text);
+  if (parts.length <= 1) return ask(parts[0] ?? text);
+  const results = [];
+  for (const part of parts) results.push(await ask(part));
+  return { text: results.map((r) => r.text).join(' '), detected: results[0]?.detected, provider: 'mymemory' };
 }
 
 const base = (code: string) => code.toLowerCase().split('-')[0];

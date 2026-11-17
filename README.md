@@ -75,6 +75,15 @@ Settings has three translation modes:
 - **Offline first** (default) — uses a downloaded on-device model when both languages are ready, otherwise goes online.
 - **Offline only** — never touches the network, and says so plainly when a language is missing.
 
+### If words get cut off
+
+Android's recogniser finalises a sentence after a silence and then stops; whatever is said while it
+restarts is lost. Settings → Speech → "Pause before translating" controls how long a silence has to
+be before the sentence counts as finished: **Quick** (0.8s) translates sooner but can cut you off
+mid-sentence, **Normal** (1.5s, the default) suits most speech, **Patient** (2.5s) waits through
+longer pauses. Face to Face and Captions also translate half-finished sentences as you speak, so the
+text keeps moving even while the recogniser is still listening.
+
 Combined with the "On-device speech recognition" toggle and the phone's built-in voices, the whole
 speaker-phone pipeline — hearing, translating, speaking — runs with no internet at all. It is also
 faster, since nothing waits on a network round trip.

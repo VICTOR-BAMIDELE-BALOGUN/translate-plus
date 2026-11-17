@@ -23,6 +23,8 @@ export default function TalkScreen() {
   const [theirs, setTheirs] = useState({ heard: '', shown: '' });
   const [error, setError] = useState<string | null>(null);
   const seq = useRef(0);
+  const partialSeq = useRef(0);
+  const partialTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handle = async (text: string, final: boolean) => {
     const side = activeRef.current;
@@ -30,7 +32,22 @@ export default function TalkScreen() {
     const from = side === 'me' ? s.myLang : s.targetLang;
     const to = side === 'me' ? s.targetLang : s.myLang;
     (side === 'me' ? setMine : setTheirs)((v) => ({ ...v, heard: text }));
-    if (!final) return;
+    if (!final) {
+      // show the translation forming while they are still talking, lightly throttled
+      if (partialTimer.current) return;
+      partialTimer.current = setTimeout(async () => {
+        partialTimer.current = null;
+        const mine = ++partialSeq.current;
+        try {
+          const out = await translate(text, from, to);
+          if (mine === partialSeq.current) (side === 'me' ? setTheirs : setMine)((v) => ({ ...v, shown: out.text }));
+        } catch {
+          // a failed partial is not worth reporting; the final result will say so
+        }
+      }, 400);
+      return;
+    }
+    partialSeq.current++;
     const id = ++seq.current;
     try {
       const out = await translate(text, from, to);

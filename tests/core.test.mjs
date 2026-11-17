@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, generateCode, isValidCode, formatCode, normalizeCode, buildInviteLink, parseInvite } from '../src/services/codec.ts';
+import { extractDetails, buildRecap } from '../src/services/recap.ts';
+import { writtenInvite, hasWrittenInvite, withLink, ENGLISH_INVITE } from '../src/invitemessage.ts';
 import { detectRegister, steerSource, correctItalian, hasRegister, canCorrect } from '../src/services/register.ts';
 import { THEMES, normalizeThemeId, resolveTheme, themeById } from '../src/themes.ts';
 import { ocrSupported as webOcrSupported } from '../src/services/ocr.web.ts';
@@ -234,4 +236,71 @@ test('formality: correcting Italian that came back in the wrong register', () =>
   // only Italian is corrected; the rest are detected and reported
   assert.equal(canCorrect('it'), true);
   assert.equal(canCorrect('fr'), false);
+});
+
+test('the note sent with a link is written in the other person\'s language', () => {
+  // the languages that matter here are written out, not machine-translated
+  for (const lang of ['it', 'fr', 'es', 'de', 'pt', 'nl', 'en']) {
+    assert.ok(hasWrittenInvite(lang), `${lang} should have a written invitation`);
+    for (const formal of [true, false]) {
+      const text = writtenInvite(lang, formal);
+      assert.ok(text.length > 60, `${lang} ${formal} is too short to explain anything`);
+      assert.ok(!text.includes('http'), 'the link is added separately');
+    }
+    // polite and familiar must actually differ
+    assert.notEqual(writtenInvite(lang, true), writtenInvite(lang, false));
+  }
+
+  // the Italian pair uses the right address forms
+  assert.match(writtenInvite('it', true), /\ble\b|\bsi apre\b/i);
+  assert.ok(writtenInvite('it', true).startsWith('Buongiorno'));
+  assert.ok(writtenInvite('it', false).startsWith('Ciao'));
+  assert.match(writtenInvite('it', false), /\bti\b/);
+
+  // a language with no written version says so, and the caller translates instead
+  assert.equal(writtenInvite('yo', true), null);
+  assert.equal(hasWrittenInvite('sw'), false);
+
+  // regional codes fall back to the base language
+  assert.equal(writtenInvite('pt-BR', true), writtenInvite('pt', true));
+
+  const joined = withLink('  Ciao  ', 'https://x.dev/#j=ABCD');
+  assert.equal(joined, 'Ciao\n\nhttps://x.dev/#j=ABCD');
+  assert.ok(ENGLISH_INVITE.includes('nothing to install') || ENGLISH_INVITE.includes('There is nothing to install'));
+});
+
+test('recap pulls out what you need after a conversation', () => {
+  const entries = [
+    { who: 'Me', mine: true, original: 'Is the flat still free?', translated: "L'appartamento è ancora libero?", ts: 0 },
+    { who: 'Signora Rossi', mine: false, original: 'Sì, venga domani alle 17:30 in via Giordano Bruno 12.', translated: 'Yes, come tomorrow at 17:30 at via Giordano Bruno 12.' },
+    { who: 'Signora Rossi', mine: false, original: 'Il canone è 450 euro al mese.', translated: 'The rent is 450 euros a month.' },
+    { who: 'Signora Rossi', mine: false, original: 'Mi scriva a rossi@example.com o chiami 3331234567.', translated: 'Write to rossi@example.com or call 3331234567.' },
+  ];
+  const details = extractDetails(entries);
+  const value = (kind) => details.filter((d) => d.kind === kind).map((d) => d.value.toLowerCase());
+
+  assert.ok(value('time').some((v) => v.includes('17:30')), 'the time should be picked up');
+  assert.ok(value('date').some((v) => v.includes('domani') || v.includes('tomorrow')), 'the day should be picked up');
+  assert.ok(value('money').some((v) => v.includes('450')), 'the rent should be picked up');
+  assert.ok(value('place').some((v) => v.includes('giordano bruno')), 'the address should be picked up');
+  assert.ok(value('email').includes('rossi@example.com'));
+  assert.ok(value('phone').some((v) => v.replace(/\D/g, '') === '3331234567'));
+
+  // the same detail in both languages is listed once
+  assert.equal(value('email').length, 1);
+  // every detail carries the sentence it came from
+  for (const d of details) assert.ok(d.line.length > 0 && d.line.includes(d.value.split(' ')[0].replace(/[€$£₦]/, '')) === d.line.includes(d.value.split(' ')[0].replace(/[€$£₦]/, '')));
+
+  // ordinary chat produces no false details
+  assert.deepEqual(extractDetails([{ who: 'Me', mine: true, original: 'Hello, how are you?' }]), []);
+  assert.deepEqual(extractDetails([]), []);
+
+  const text = buildRecap('Chat with Signora Rossi', entries, details);
+  assert.match(text, /^Chat with Signora Rossi/);
+  assert.match(text, /Key details/);
+  assert.match(text, /Amount: 450 euro/i);
+  assert.match(text, /Conversation/);
+  assert.match(text, /Signora Rossi: Il canone/);
+  // both sides of a translated line are kept
+  assert.match(text, /→/);
 });

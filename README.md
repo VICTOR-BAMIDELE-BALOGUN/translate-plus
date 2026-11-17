@@ -9,6 +9,8 @@ Everything it depends on is free and needs no server of your own.
 | Feature | How it works | Cost |
 |---|---|---|
 | Translate tab | Two panes that scroll on their own, stacked or side by side | Free |
+| Recaps | Key details and the transcript after a conversation | Free |
+| Invitation note | Call links go out with a message in the other person's language | Free |
 | Formality | Choose "Lei" or "tu"; the app steers it, reads it back and labels the result | Free |
 | Themes | Eight themes in four light/dark pairs, optionally following the phone | Free |
 | Text translation, 60 languages, auto-detect | Google public endpoint, MyMemory as automatic fallback | Free, no key |
@@ -52,6 +54,33 @@ part of the Android app only.
 What differs from the installed Android app: speech recognition uses the browser's engine, which
 works in Chrome and Safari but not Firefox; offline translation models are not available; and the
 Android-specific microphone behaviour does not apply.
+
+## Recaps
+
+Face to Face, Captions and each conversation have a **Recap** button once there is something to
+recap. It is not a written summary — there is no language model here and inventing prose about a
+conversation with a landlord would be worse than useless. What it does instead is pull out the
+things you actually need afterwards and show each one with the sentence it came from:
+
+| | Examples |
+|---|---|
+| Day | tomorrow, domani, 18/11, venerdì |
+| Time | 17:30, alle 17 |
+| Amount | €450, 450 euro |
+| Place | via Giordano Bruno 12 |
+| Phone, Email | 333 123 4567, rossi@example.com |
+
+Both languages are searched, since a time or a price often survives translation unchanged while the
+sentence around it does not, and the same detail found twice is listed once. Copy or share puts the
+details and the whole transcript into your notes.
+
+## The invitation that goes with a link
+
+A call link now travels with a note written in the other person's language, so the first thing a
+stranger reads makes sense to them. Italian, French, Spanish, German, Portuguese, Dutch and English
+are written out by hand in both a polite and a familiar form — a first impression is the wrong place
+for machine translation. Any other language falls back to translating the English, and says so.
+The sheet shows the note and the link before anything is sent, and both are editable.
 
 ## Formality — "Lei" or "tu"
 

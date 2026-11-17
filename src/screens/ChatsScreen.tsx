@@ -1,20 +1,10 @@
 import React, { useState } from 'react';
-import { Alert, FlatList, Pressable, Share, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { Btn, Card, ErrorText, Label, styles } from '../components/ui';
 import { usePalette } from '../theme';
 import { addRoom, removeRoom, useStore, type Room } from '../store';
 import { formatCode, generateCode, isValidCode } from '../services/codec';
-import { getSettings } from '../store';
-import { buildInviteLink, defaultLinkBase } from '../invite';
-
-export function shareRoom(room: Room) {
-  const s = getSettings();
-  const base = s.linkBase || defaultLinkBase();
-  const message = base
-    ? `Let's talk — we each use our own language. Open this link, no app needed:\n${buildInviteLink(base, room.code, s.displayName || 'A friend', s.targetLang)}`
-    : `Join me on Translate+ — we each write and speak our own language.\nOpen Chats → Join and enter this code:\n${room.code}`;
-  Share.share({ message }).catch(() => {});
-}
+import InviteSheet from '../components/InviteSheet';
 
 export default function ChatsScreen(props: { onOpen: (room: Room) => void }) {
   const p = usePalette();
@@ -22,14 +12,14 @@ export default function ChatsScreen(props: { onOpen: (room: Room) => void }) {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [inviting, setInviting] = useState<Room | null>(null);
 
   const create = () => {
     const room: Room = { code: generateCode(), name: name.trim() || 'New chat', createdAt: Date.now() };
     addRoom(room);
     setName('');
     setError(null);
-    props.onOpen(room);
-    shareRoom(room);
+    setInviting(room);
   };
 
   const join = () => {
@@ -46,6 +36,15 @@ export default function ChatsScreen(props: { onOpen: (room: Room) => void }) {
   };
 
   return (
+    <>
+    <InviteSheet
+      room={inviting}
+      onClose={() => {
+        const room = inviting;
+        setInviting(null);
+        if (room) props.onOpen(room);
+      }}
+    />
     <FlatList
       contentContainerStyle={{ padding: 16 }}
       keyboardShouldPersistTaps="handled"
@@ -105,5 +104,6 @@ export default function ChatsScreen(props: { onOpen: (room: Room) => void }) {
         );
       }}
     />
+    </>
   );
 }

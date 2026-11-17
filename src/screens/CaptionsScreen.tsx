@@ -11,6 +11,7 @@ import { translate } from '../services/translator';
 import { speak } from '../services/tts';
 import { useListener } from '../services/listen';
 import { langName } from '../languages';
+import RecapSheet from '../components/RecapSheet';
 
 type Line = { id: string; original: string; translated: string; mine?: boolean };
 
@@ -23,6 +24,7 @@ export default function CaptionsScreen() {
   const [reply, setReply] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
+  const [recapOpen, setRecapOpen] = useState(false);
   const partialSeq = useRef(0);
   const partialTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const list = useRef<FlatList<Line>>(null);
@@ -89,6 +91,7 @@ export default function CaptionsScreen() {
           onPress={() => (mic.listening ? mic.stop() : mic.start(theirLang))}
         />
         <Btn kind="ghost" label="Use on calls" onPress={() => setHelp(true)} />
+        {lines.length ? <Btn kind="ghost" label="Recap" onPress={() => setRecapOpen(true)} /> : null}
       </View>
       <ErrorText>{error || mic.error}</ErrorText>
 
@@ -132,6 +135,18 @@ export default function CaptionsScreen() {
         />
         <Btn label="Say" onPress={sendReply} disabled={!reply.trim()} />
       </View>
+
+      <RecapSheet
+        visible={recapOpen}
+        title="Captions session"
+        entries={lines.map((l) => ({
+          who: l.mine ? 'Me' : 'Them',
+          mine: !!l.mine,
+          original: l.mine ? l.original : l.original,
+          translated: l.translated,
+        }))}
+        onClose={() => setRecapOpen(false)}
+      />
 
       <Modal visible={help} animationType="slide" onRequestClose={() => setHelp(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>

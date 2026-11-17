@@ -12,8 +12,8 @@ import { RoomConnection, type RoomStatus, type Wire } from '../services/room';
 import { translate } from '../services/translator';
 import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
-import { shareRoom } from './ChatsScreen';
-import { buildInviteLink, defaultLinkBase } from '../invite';
+import InviteSheet, { inviteLinkFor } from '../components/InviteSheet';
+import RecapSheet from '../components/RecapSheet';
 
 export default function RoomScreen(props: { room: Room; onBack: () => void }) {
   const { room } = props;
@@ -27,6 +27,8 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
   const [partial, setPartial] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const [recapOpen, setRecapOpen] = useState(false);
   const conn = useRef<RoomConnection | null>(null);
   const inCallRef = useRef(false);
   const flat = useRef<FlatList<ChatMessage>>(null);
@@ -137,13 +139,27 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+      <InviteSheet room={inviting ? room : null} onClose={() => setInviting(false)} />
+      <RecapSheet
+        visible={recapOpen}
+        title={`Conversation with ${room.name}`}
+        entries={list.map((m) => ({
+          who: m.mine ? 'Me' : m.name,
+          mine: m.mine,
+          original: m.text,
+          translated: m.translated,
+          ts: m.ts,
+        }))}
+        onClose={() => setRecapOpen(false)}
+      />
       <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 8, borderBottomWidth: 1, borderColor: p.line }}>
         <Btn small kind="ghost" label="‹ Back" onPress={props.onBack} />
         <View style={{ flex: 1 }}>
           <Text numberOfLines={1} style={{ color: p.text, fontSize: 17, fontWeight: '800' }}>{room.name}</Text>
           <Text numberOfLines={1} style={{ color: status === 'online' ? p.ok : p.warm, fontSize: 12 }}>{statusText}</Text>
         </View>
-        <Btn small kind="ghost" label="Invite" onPress={() => shareRoom(room)} />
+        {list.length ? <Btn small kind="ghost" label="Recap" onPress={() => setRecapOpen(true)} /> : null}
+        <Btn small kind="ghost" label="Invite" onPress={() => setInviting(true)} />
         <Btn small kind={inCall ? 'danger' : 'primary'} label={inCall ? 'End call' : 'Call'} onPress={toggleCall} />
       </View>
 
@@ -151,10 +167,7 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
         accessibilityRole="button"
         accessibilityLabel="Copy invite code"
         onPress={async () => {
-          const base = settings.linkBase || defaultLinkBase();
-          const payload = base
-            ? buildInviteLink(base, room.code, settings.displayName || 'A friend', settings.targetLang)
-            : room.code;
+          const payload = inviteLinkFor(room) || room.code;
           await Clipboard.setStringAsync(payload).catch(() => {});
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
@@ -162,7 +175,7 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
         style={{ color: p.sub, fontSize: 12, paddingHorizontal: 12, paddingVertical: 6 }}
       >
         Invite code: <Text style={{ color: p.text, fontWeight: '700' }}>{room.code}</Text> ·{' '}
-        {copied ? 'copied' : settings.linkBase || defaultLinkBase() ? 'tap to copy the call link' : 'tap to copy'}
+        {copied ? 'copied' : inviteLinkFor(room) ? 'tap to copy the call link' : 'tap to copy'}
       </Text>
 
       {inCall ? (

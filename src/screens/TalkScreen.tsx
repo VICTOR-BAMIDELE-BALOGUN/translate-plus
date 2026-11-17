@@ -11,6 +11,8 @@ import { translate } from '../services/translator';
 import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import { langName } from '../languages';
+import RecapSheet from '../components/RecapSheet';
+import type { Entry } from '../services/recap';
 
 type Side = 'me' | 'them';
 type Half = { lines: string[]; pending: string; heard: string };
@@ -27,6 +29,8 @@ export default function TalkScreen() {
   const [mine, setMine] = useState<Half>(EMPTY); // what I read
   const [theirs, setTheirs] = useState<Half>(EMPTY); // what they read
   const [error, setError] = useState<string | null>(null);
+  const [transcript, setTranscript] = useState<Entry[]>([]);
+  const [recapOpen, setRecapOpen] = useState(false);
   // one counter for partials and finals together, so an older request can never
   // overwrite a newer one when the network returns them out of order
   const seq = useRef(0);
@@ -72,6 +76,10 @@ export default function TalkScreen() {
       const out = await translate(text, from, to);
       if (id !== seq.current) return;
       setHalf(reader, (v) => ({ ...v, lines: [...v.lines, out.text].slice(-KEEP), pending: '' }));
+      setTranscript((t) => [
+        ...t,
+        { who: side === 'me' ? 'Me' : 'Them', mine: side === 'me', original: text, translated: out.text, ts: Date.now() },
+      ]);
       setHalf(side, (v) => ({ ...v, heard: '' }));
       setError(null);
       if (s.autoSpeak) speak(out.text, to);
@@ -102,6 +110,7 @@ export default function TalkScreen() {
     clearTimer();
     setMine(EMPTY);
     setTheirs(EMPTY);
+    setTranscript([]);
   };
 
   const renderHalf = (side: Side) => {
@@ -118,6 +127,7 @@ export default function TalkScreen() {
             onChange={(c) => updateSettings(side === 'me' ? { myLang: c } : { targetLang: c })}
           />
           {data.lines.length ? <Btn small kind="ghost" label="Clear" onPress={clearAll} /> : null}
+          {side === 'me' && transcript.length ? <Btn small kind="ghost" label="Recap" onPress={() => setRecapOpen(true)} /> : null}
         </View>
 
         <ScrollView
@@ -168,6 +178,7 @@ export default function TalkScreen() {
 
   return (
     <View style={{ flex: 1 }}>
+      <RecapSheet visible={recapOpen} title="Face to Face conversation" entries={transcript} onClose={() => setRecapOpen(false)} />
       {renderHalf('them')}
       <View style={{ height: 2, backgroundColor: p.line }} />
       {error || mic.error ? <View style={{ paddingHorizontal: 16 }}><ErrorText>{error || mic.error}</ErrorText></View> : null}

@@ -143,6 +143,13 @@ with sync_playwright() as pw:
     tab(a, 'Chats')
     a.get_by_placeholder('Name (e.g. Landlord, Mum)').fill('Marco')
     a.get_by_role('button', name='Create and share invite code').click()
+    a.wait_for_selector('text=Invite Marco', timeout=10000)
+    note = a.locator('textarea').first
+    note.wait_for()
+    a.wait_for_timeout(1500)
+    check('creating a chat offers a note in the other language', len(note.input_value()) > 40, note.input_value()[:60])
+    check('a machine-translated note is marked as such', a.get_by_text('machine-translated').count() == 1)
+    a.get_by_role('button', name='Close').click()
     a.wait_for_selector('text=Invite code:')
     code = re.search(r'[A-Z2-9]{4}(?:-[A-Z2-9]{4}){3}', a.locator('text=Invite code:').first.inner_text()).group(0)
     check('room created with invite code', bool(code), code)

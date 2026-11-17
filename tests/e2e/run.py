@@ -199,6 +199,18 @@ with sync_playwright() as pw:
     a.reload(); a.wait_for_selector('text=Translate'); tab(a, 'Chats')
     check('chats persist after restart', a.get_by_text('Marco', exact=True).count() >= 1)
 
+    # 8b photo translation and the voice-clone key, both web-specific
+    tab(a, 'Photo')
+    check('photo tab opens', a.locator('text=Photograph a sign').count() == 1)
+    check('photo tab offers camera and gallery', a.get_by_role('button', name='Take a photo').count() == 1 and a.get_by_role('button', name='Choose a photo').count() == 1)
+    tab(a, 'Settings')
+    a.get_by_placeholder(re.compile('Paste')).fill('fish-test-key-123')
+    a.get_by_role('button', name='Save').first.click()
+    a.wait_for_timeout(600)
+    check('Fish Audio key can be saved in the browser', a.locator('text=Fish Audio API key · saved').count() == 1)
+    a.reload(); a.wait_for_selector('text=Translate'); tab(a, 'Settings')
+    check('saved key survives a restart', a.locator('text=Fish Audio API key · saved').count() == 1)
+
     # 9 installable web app
     w = browser.new_context(viewport={'width': 393, 'height': 851})
     wp = w.new_page()

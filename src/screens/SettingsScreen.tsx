@@ -5,6 +5,7 @@ import { Btn, Card, Choice, ErrorText, Label, LangButton, Stepper, ToggleRow, st
 import { usePalette } from '../theme';
 import { DEFAULT_BROKER, clearHistory, resetAll, updateSettings, useSettings } from '../store';
 import { createVoice, deleteVoice, getFishKey, setFishKey } from '../services/fish';
+import { secretsAreProtected } from '../services/keystore';
 import { lastVoiceError, speak, stopSpeaking } from '../services/tts';
 import { clearTranslateCache } from '../services/translate';
 import { downloadOfflineModel, offlineAvailable, offlineLanguageCodes, offlineSupported } from '../services/offline';
@@ -34,9 +35,14 @@ function VoiceClone() {
   }, []);
 
   const saveKey = async () => {
-    await setFishKey(key);
-    setHasKey(!!key.trim());
-    setKey('');
+    try {
+      await setFishKey(key);
+      setHasKey(!!key.trim());
+      setKey('');
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save the key.');
+    }
   };
 
   const toggleRecord = async () => {
@@ -150,6 +156,11 @@ function VoiceClone() {
       <Text style={{ color: p.accent, fontSize: 13, marginTop: 6 }} onPress={() => Linking.openURL('https://fish.audio/app/api-keys')}>
         Get a free key at fish.audio →
       </Text>
+      {!secretsAreProtected ? (
+        <Text style={{ color: p.sub, fontSize: 12, marginTop: 6, lineHeight: 18 }}>
+          In the browser the key is kept in this browser's own storage, which is less protected than the phone app's keystore. Clearing site data removes it.
+        </Text>
+      ) : null}
       {hasKey ? <Btn small kind="ghost" label="Remove key" style={{ alignSelf: 'flex-start', marginTop: 8 }} onPress={async () => { await setFishKey(''); setHasKey(false); }} /> : null}
 
       <View style={{ height: 14 }} />

@@ -1,27 +1,22 @@
 // Fish Audio client: voice cloning (create a private voice model from a recording)
 // and text-to-speech in that voice. Uses the user's own free API key.
-import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+import { readSecret, writeSecret } from './keystore';
 
 const BASE = 'https://api.fish.audio';
-const KEY_NAME = 'translateplus.fishKey';
 
 let cachedKey: string | null | undefined;
 
 export async function getFishKey(): Promise<string | null> {
   if (cachedKey !== undefined) return cachedKey;
-  try {
-    cachedKey = (await SecureStore.getItemAsync(KEY_NAME)) || null;
-  } catch {
-    cachedKey = null;
-  }
+  cachedKey = await readSecret();
   return cachedKey;
 }
 
 export async function setFishKey(key: string): Promise<void> {
   const k = key.trim();
+  await writeSecret(k); // throws if storage is blocked, so the UI can say so
   cachedKey = k || null;
-  if (k) await SecureStore.setItemAsync(KEY_NAME, k);
-  else await SecureStore.deleteItemAsync(KEY_NAME);
 }
 
 async function failure(res: Response): Promise<Error> {
@@ -44,8 +39,14 @@ export async function createVoice(title: string, fileUri: string): Promise<{ id:
   form.append('title', title);
   form.append('train_mode', 'fast');
   form.append('visibility', 'private');
-  // React Native file part
-  form.append('voices', { uri: fileUri, name: 'sample.m4a', type: 'audio/mp4' } as any);
+  if (Platform.OS === 'web') {
+    // a browser recording is a blob: URL; FormData needs the actual Blob
+    const blob = await (await fetch(fileUri)).blob();
+    const ext = (blob.type.split('/')[1] || 'webm').split(';')[0];
+    form.append('voices', blob, `sample.${ext}`);
+  } else {
+    form.append('voices', { uri: fileUri, name: 'sample.m4a', type: 'audio/mp4' } as any);
+  }
   const res = await fetch(`${BASE}/model`, { method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: form });
   if (!res.ok) throw await failure(res);
   const body = await res.json();

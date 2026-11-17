@@ -1,5 +1,6 @@
 // Speech output. One queue so phrases never overlap; cloned voice with automatic
 // fallback to the phone's built-in voice if Fish Audio fails or is slow.
+import { Platform } from 'react-native';
 import * as Speech from 'expo-speech';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
@@ -80,13 +81,22 @@ async function cloneSpeak(text: string, voiceId: string): Promise<boolean> {
   try {
     const s = getSettings();
     const audio = await synthesize(text, voiceId, s.fishModel, s.speechRate);
-    const file = new File(Paths.cache, `tplus-tts-${Date.now()}.mp3`);
-    file.create({ overwrite: true });
-    file.write(new Uint8Array(audio));
-    await playFile(file.uri);
-    try {
-      file.delete();
-    } catch {}
+    if (Platform.OS === 'web') {
+      const url = URL.createObjectURL(new Blob([audio], { type: 'audio/mpeg' }));
+      try {
+        await playFile(url);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } else {
+      const file = new File(Paths.cache, `tplus-tts-${Date.now()}.mp3`);
+      file.create({ overwrite: true });
+      file.write(new Uint8Array(audio));
+      await playFile(file.uri);
+      try {
+        file.delete();
+      } catch {}
+    }
     lastError = null;
     return true;
   } catch (e) {

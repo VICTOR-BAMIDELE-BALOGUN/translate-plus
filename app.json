@@ -42,7 +42,14 @@
           "microphonePermission": "Translate+ records a short sample to clone your voice."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Translate+ reads text from photos you choose.",
+          "cameraPermission": "Translate+ reads text from photos you take."
+        }
+      ]
     ]
   }
 }

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, generateCode, isValidCode, formatCode, normalizeCode, buildInviteLink, parseInvite } from '../src/services/codec.ts';
+import { ocrSupported as webOcrSupported } from '../src/services/ocr.web.ts';
 import { translate, parseGoogle, parseMyMemory, clearTranslateCache, chooseRoute, splitForLength } from '../src/services/translate.ts';
 
 test('utf8 and base64 round-trip, including emoji and non-Latin text', () => {
@@ -148,4 +149,12 @@ test('long text is split, never silently truncated', () => {
   const hard = splitForLength(solid, 450);
   assert.equal(hard.join('').length, 1000);
   for (const p of hard) assert.ok(p.length <= 450);
+});
+
+test('photo reading covers the languages that matter here', () => {
+  for (const code of ['it', 'en', 'fr', 'es', 'de', 'pt', 'sw', 'yo', 'ar', 'zh-CN', 'ja', 'ru'])
+    assert.ok(webOcrSupported(code), `${code} should be readable from a photo on the web`);
+  // a language with no model must be reported, not silently attempted
+  assert.equal(webOcrSupported('ig'), false);
+  assert.equal(webOcrSupported('auto'), false);
 });

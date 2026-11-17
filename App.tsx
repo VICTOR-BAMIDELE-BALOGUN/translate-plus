@@ -9,6 +9,7 @@ import { usePalette } from './src/theme';
 import TranslateScreen from './src/screens/TranslateScreen';
 import TalkScreen from './src/screens/TalkScreen';
 import CaptionsScreen from './src/screens/CaptionsScreen';
+import ImageScreen from './src/screens/ImageScreen';
 import ChatsScreen from './src/screens/ChatsScreen';
 import RoomScreen from './src/screens/RoomScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -22,11 +23,12 @@ nacl.setPRNG((x, n) => {
   for (let i = 0; i < n; i++) x[i] = bytes[i];
 });
 
-type Tab = 'translate' | 'talk' | 'captions' | 'chats' | 'settings';
+type Tab = 'translate' | 'talk' | 'captions' | 'image' | 'chats' | 'settings';
 const TABS: { id: Tab; label: string; glyph: string }[] = [
   { id: 'translate', label: 'Translate', glyph: 'Aあ' },
   { id: 'talk', label: 'Face to Face', glyph: '⇅' },
   { id: 'captions', label: 'Captions', glyph: '▤' },
+  { id: 'image', label: 'Photo', glyph: '◳' },
   { id: 'chats', label: 'Chats', glyph: '✉' },
   { id: 'settings', label: 'Settings', glyph: '⚙' },
 ];
@@ -94,6 +96,7 @@ function Shell() {
             {tab === 'translate' ? <TranslateScreen /> : null}
             {tab === 'talk' ? <TalkScreen /> : null}
             {tab === 'captions' ? <CaptionsScreen /> : null}
+            {tab === 'image' ? <ImageScreen /> : null}
             {tab === 'chats' ? <ChatsScreen onOpen={setRoom} /> : null}
             {tab === 'settings' ? <SettingsScreen /> : null}
           </View>

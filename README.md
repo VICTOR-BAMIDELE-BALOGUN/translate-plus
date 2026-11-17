@@ -16,6 +16,7 @@ Everything it depends on is free and needs no server of your own.
 | Captions on WhatsApp / other app calls | Call on speaker + Translate+ listening; reply bar speaks your answer in their language | Free |
 | Chats | Auto-translated messages, show original, tap to listen, dictation | Free public relay |
 | **Call links** | Share a link; the other person joins from their browser with nothing installed | Free (GitHub Pages) |
+| **Photo translation** | Read text in a photo or screenshot and translate it; the text stays editable | Free, no key |
 | **Installable web app** | Add to the home screen on Android or iPhone, no app store, opens offline | Free |
 | In-app translated call | Speech → text → sent encrypted → translated and spoken on the other phone | Free |
 | Voice clone | Fish Audio free model (`s2.1-pro-free`), 3 voice slots, your own API key | Free tier |
@@ -48,6 +49,18 @@ part of the Android app only.
 What differs from the installed Android app: speech recognition uses the browser's engine, which
 works in Chrome and Safari but not Firefox; offline translation models are not available; and the
 Android-specific microphone behaviour does not apply.
+
+## Photo translation
+
+The Photo tab reads text out of a picture — a sign, a menu, a letter, a screenshot — and translates
+it. What it found is shown in an editable box, so a misread word can be corrected before translating.
+
+- **Android app:** Google ML Kit reads the photo on the device, with no internet. It handles Latin,
+  Chinese, Japanese, Korean and Devanagari scripts; Arabic, Hebrew, Thai, Greek and Cyrillic are not
+  available there.
+- **Web:** Tesseract, fetched from a CDN the first time and then kept by the browser. It covers more
+  alphabets, including Arabic, Greek, Cyrillic, Thai and Yoruba, but the first photo needs internet
+  and takes longer while the reader and the language data download.
 
 ## Call links
 
@@ -106,7 +119,7 @@ only sees an unreadable topic name and ciphertext. Anyone holding the code can r
   This needs a paid Twilio account, a server you host, and a paid server-side speech service; none of
   those accounts exist yet, so no code for it is included.
 - Listening inside a WhatsApp call without speaker. Android does not allow this for normal apps.
-- Photo/screenshot translation and AI writing suggestions.
+- AI writing suggestions.
 - A native iOS build (needs a paid Apple developer account). The installable web app covers iPhones instead.
 
 ## Get the APK (free)
@@ -151,6 +164,10 @@ npm test            # encryption, translation parsing, fallback and cache
   joining by shared link and talking in both directions, offline-mode routing, and the installable
   web app (service worker, manifest, opening with the network switched off).
 - MyMemory was called live and returned correct translations with language detection.
+
+**Photo reading** was verified for real against a generated Italian sign (`Vietato fumare / Uscita di
+sicurezza`), which Tesseract read exactly. What is not verified here is the browser fetching the
+reader from its CDN, because this build environment blocks it.
 
 **Not yet verified, because it needs a real phone:** microphone and speech recognition, spoken output,
 voice-clone recording and upload, captions during a WhatsApp call, the public relay, and the APK build itself.

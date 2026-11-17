@@ -1,9 +1,10 @@
 // Face to Face: one phone between two people. The top half is rotated so the other
 // person can read it from across the table.
 import React, { useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import { useKeepAwake } from 'expo-keep-awake';
-import { ErrorText, LangButton } from '../components/ui';
+import { Btn, ErrorText, LangButton } from '../components/ui';
 import { usePalette } from '../theme';
 import { updateSettings, useSettings } from '../store';
 import { translate } from '../services/translator';
@@ -12,6 +13,10 @@ import { useListener } from '../services/listen';
 import { langName } from '../languages';
 
 type Side = 'me' | 'them';
+type Half = { lines: string[]; pending: string; heard: string };
+
+const EMPTY: Half = { lines: [], pending: '', heard: '' };
+const KEEP = 6; // finished sentences stay on screen instead of being overwritten
 
 export default function TalkScreen() {
   useKeepAwake();
@@ -19,43 +24,59 @@ export default function TalkScreen() {
   const s = useSettings();
   const [active, setActive] = useState<Side | null>(null);
   const activeRef = useRef<Side | null>(null);
-  const [mine, setMine] = useState({ heard: '', shown: '' }); // what I said / what I read
-  const [theirs, setTheirs] = useState({ heard: '', shown: '' });
+  const [mine, setMine] = useState<Half>(EMPTY); // what I read
+  const [theirs, setTheirs] = useState<Half>(EMPTY); // what they read
   const [error, setError] = useState<string | null>(null);
+  // one counter for partials and finals together, so an older request can never
+  // overwrite a newer one when the network returns them out of order
   const seq = useRef(0);
-  const partialSeq = useRef(0);
-  const partialTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrolls = useRef<Record<Side, ScrollViewInstance | null>>({ me: null, them: null });
+
+  const setHalf = (side: Side, fn: (v: Half) => Half) => (side === 'me' ? setMine(fn) : setTheirs(fn));
+
+  const clearTimer = () => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
 
   const handle = async (text: string, final: boolean) => {
     const side = activeRef.current;
     if (!side) return;
     const from = side === 'me' ? s.myLang : s.targetLang;
     const to = side === 'me' ? s.targetLang : s.myLang;
-    (side === 'me' ? setMine : setTheirs)((v) => ({ ...v, heard: text }));
+    const reader: Side = side === 'me' ? 'them' : 'me';
+    setHalf(side, (v) => ({ ...v, heard: text }));
+
     if (!final) {
       // show the translation forming while they are still talking, lightly throttled
-      if (partialTimer.current) return;
-      partialTimer.current = setTimeout(async () => {
-        partialTimer.current = null;
-        const mine = ++partialSeq.current;
+      if (timer.current) return;
+      timer.current = setTimeout(async () => {
+        timer.current = null;
+        const id = ++seq.current;
         try {
           const out = await translate(text, from, to);
-          if (mine === partialSeq.current) (side === 'me' ? setTheirs : setMine)((v) => ({ ...v, shown: out.text }));
+          if (id === seq.current) setHalf(reader, (v) => ({ ...v, pending: out.text }));
         } catch {
           // a failed partial is not worth reporting; the final result will say so
         }
       }, 400);
       return;
     }
-    partialSeq.current++;
+
+    clearTimer(); // a pending partial must not land on top of the finished sentence
     const id = ++seq.current;
     try {
       const out = await translate(text, from, to);
       if (id !== seq.current) return;
-      (side === 'me' ? setTheirs : setMine)((v) => ({ ...v, shown: out.text }));
+      setHalf(reader, (v) => ({ ...v, lines: [...v.lines, out.text].slice(-KEEP), pending: '' }));
+      setHalf(side, (v) => ({ ...v, heard: '' }));
       setError(null);
       if (s.autoSpeak) speak(out.text, to);
     } catch (e) {
+      setHalf(reader, (v) => ({ ...v, pending: '' }));
       setError(e instanceof Error ? e.message : 'Translation failed');
     }
   };
@@ -70,28 +91,67 @@ export default function TalkScreen() {
       return;
     }
     stopSpeaking();
+    clearTimer();
     activeRef.current = side;
     setActive(side);
     mic.start(side === 'me' ? s.myLang : s.targetLang);
+  };
+
+  const clearAll = () => {
+    seq.current++;
+    clearTimer();
+    setMine(EMPTY);
+    setTheirs(EMPTY);
   };
 
   const renderHalf = (side: Side) => {
     const lang = side === 'me' ? s.myLang : s.targetLang;
     const data = side === 'me' ? mine : theirs;
     const on = active === side;
+    const last = data.lines.length - 1;
     return (
       <View style={{ flex: 1, padding: 16, transform: side === 'them' ? [{ rotate: '180deg' }] : [] }}>
-        <View style={{ flexDirection: 'row' }}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
           <LangButton
             caption={side === 'me' ? 'I speak' : 'They speak'}
             code={lang}
             onChange={(c) => updateSettings(side === 'me' ? { myLang: c } : { targetLang: c })}
           />
+          {data.lines.length ? <Btn small kind="ghost" label="Clear" onPress={clearAll} /> : null}
         </View>
-        <View style={{ flex: 1, justifyContent: 'center' }}>
-          <Text style={{ color: p.text, fontSize: 26, lineHeight: 34, fontWeight: '600' }}>{data.shown || ' '}</Text>
-          {data.heard ? <Text style={{ color: p.sub, fontSize: 15, marginTop: 8 }}>{on ? '🎙 ' : ''}{data.heard}</Text> : null}
-        </View>
+
+        <ScrollView
+          ref={(r) => {
+            scrolls.current[side] = r;
+          }}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', paddingVertical: 10 }}
+          onContentSizeChange={() => scrolls.current[side]?.scrollToEnd({ animated: true })}
+        >
+          {data.lines.map((line, i) => (
+            <Text
+              key={i}
+              selectable
+              style={{
+                color: i === last ? p.text : p.sub,
+                fontSize: i === last ? 26 : 16,
+                lineHeight: i === last ? 34 : 22,
+                fontWeight: i === last ? '600' : '400',
+                marginBottom: 8,
+              }}
+            >
+              {line}
+            </Text>
+          ))}
+          {data.pending ? (
+            <Text style={{ color: p.text, opacity: 0.55, fontSize: 26, lineHeight: 34, fontWeight: '600' }}>{data.pending}</Text>
+          ) : null}
+        </ScrollView>
+
+        {data.heard ? (
+          <Text numberOfLines={2} style={{ color: p.sub, fontSize: 14, marginBottom: 8 }}>🎙 {data.heard}</Text>
+        ) : null}
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={on ? 'Stop listening' : `Speak ${langName(lang)}`}

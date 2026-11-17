@@ -84,6 +84,11 @@ mid-sentence, **Normal** (1.5s, the default) suits most speech, **Patient** (2.5
 longer pauses. Face to Face and Captions also translate half-finished sentences as you speak, so the
 text keeps moving even while the recogniser is still listening.
 
+Face to Face keeps the last six finished sentences on each half, newest largest, so a sentence is
+never wiped out by the next one before it has been read. `tests/e2e/speech.py` drives a stubbed
+recogniser to prove it: partials, finals, and a partial arriving late must not overwrite a finished
+sentence.
+
 Combined with the "On-device speech recognition" toggle and the phone's built-in voices, the whole
 speaker-phone pipeline — hearing, translating, speaking — runs with no internet at all. It is also
 faster, since nothing waits on a network round trip.

@@ -22,6 +22,7 @@ export type Settings = {
   offlineLanguages: string[];
   theme: 'dark' | 'light' | 'system';
   captionSize: number;
+  paneLayout: 'stacked' | 'side';
   brokerUrl: string;
   linkBase: string;
 };
@@ -48,6 +49,7 @@ export const DEFAULT_SETTINGS: Settings = {
   offlineLanguages: [],
   theme: 'dark',
   captionSize: 22,
+  paneLayout: 'stacked',
   brokerUrl: DEFAULT_BROKER,
   linkBase: '',
 };

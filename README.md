@@ -8,6 +8,7 @@ Everything it depends on is free and needs no server of your own.
 
 | Feature | How it works | Cost |
 |---|---|---|
+| Translate tab | Two panes that scroll on their own, stacked or side by side | Free |
 | Text translation, 60 languages, auto-detect | Google public endpoint, MyMemory as automatic fallback | Free, no key |
 | Offline translation, 49 languages | Google ML Kit on-device models, downloaded per language (~30 MB) | Free, no key, no internet |
 | Voice input | Android speech recognition (optionally on-device) | Free |
@@ -49,6 +50,14 @@ part of the Android app only.
 What differs from the installed Android app: speech recognition uses the browser's engine, which
 works in Chrome and Safari but not Firefox; offline translation models are not available; and the
 Android-specific microphone behaviour does not apply.
+
+## Translate tab layout
+
+The source and the translation each sit in their own pane with their own scroll, so a long letter
+can be read on one side while the other stays put. The switch above them, also in
+Settings → Display, chooses **Stacked** (one above the other) or **Side by side**. Side by side
+needs about 520px of width, so on an upright phone it stays stacked and says why; turn the phone
+sideways, or use a laptop, and it splits into two columns.
 
 ## Photo translation
 

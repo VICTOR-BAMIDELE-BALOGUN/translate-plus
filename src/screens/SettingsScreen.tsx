@@ -387,6 +387,20 @@ export default function SettingsScreen() {
       <Card>
         <Label>Display</Label>
         <Choice value={s.theme} onChange={(v) => updateSettings({ theme: v })} options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'system', label: 'Match phone' }]} />
+        <View style={{ height: 10 }} />
+        <Label>Translate tab layout</Label>
+        <Choice
+          value={s.paneLayout}
+          onChange={(v) => updateSettings({ paneLayout: v })}
+          options={[
+            { value: 'stacked', label: 'Stacked' },
+            { value: 'side', label: 'Side by side' },
+          ]}
+        />
+        <Text style={{ color: p.sub, fontSize: 12, marginTop: 6 }}>
+          Side by side needs a wide screen, so on a narrow phone it stays stacked until you turn it sideways.
+        </Text>
+        <View style={{ height: 10 }} />
         <Stepper title="Caption text size" value={String(s.captionSize)} onMinus={() => size(-2)} onPlus={() => size(2)} />
       </Card>
 

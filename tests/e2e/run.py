@@ -57,7 +57,30 @@ with sync_playwright() as pw:
     a.get_by_role('button', name='Listen').click()
     a.wait_for_timeout(300)
     a.get_by_role('button', name='Clear').click()
-    check('history saved after use', a.locator('text=Recent').count() == 1 and a.locator('text=[yo] Ciao, come stai?').count() >= 1)
+    a.get_by_text(re.compile(r'^Recent \(')).click()
+    check('history saved after use', a.locator('text=[yo] Ciao, come stai?').count() >= 1)
+    a.get_by_text(re.compile(r'^Recent \(')).click()
+
+    # both panes scroll on their own, and the layout can be switched
+    long_text = 'Buongiorno. ' * 60
+    a.get_by_placeholder('Type or tap the mic and speak').fill(long_text)
+    a.wait_for_timeout(1200)
+    scrolls = a.evaluate('''() => {
+      const els = [...document.querySelectorAll('div,textarea')];
+      return els.filter(e => e.scrollHeight > e.clientHeight + 20 && e.clientHeight > 40).length;
+    }''')
+    check('long text produces scrollable panes', scrolls >= 1, scrolls)
+    check('layout switch is on the translate tab', a.get_by_role('button', name='Side by side').count() == 1)
+    a.get_by_role('button', name='Side by side').click()
+    a.wait_for_timeout(400)
+    check('narrow phone explains why it stays stacked', a.locator('text=Not enough width').count() == 1)
+    a.set_viewport_size({'width': 900, 'height': 700})
+    a.wait_for_timeout(500)
+    check('wide screen puts the panes side by side', a.locator('text=Not enough width').count() == 0)
+    a.get_by_role('button', name='Stacked').click()
+    a.set_viewport_size({'width': 393, 'height': 851})
+    a.get_by_placeholder('Type or tap the mic and speak').fill('')
+    a.wait_for_timeout(300)
     a.screenshot(path='1-translate.png')
 
     # 3 face to face

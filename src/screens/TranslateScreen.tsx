@@ -8,6 +8,7 @@ import { translate } from '../services/translator';
 import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import { langName } from '../languages';
+import { hasRegister, type Detected } from '../services/register';
 
 export default function TranslateScreen() {
   const p = usePalette();
@@ -19,6 +20,8 @@ export default function TranslateScreen() {
   const [result, setResult] = useState('');
   const [detected, setDetected] = useState<string | undefined>();
   const [offline, setOffline] = useState(false);
+  const [gotRegister, setGotRegister] = useState<Detected | undefined>();
+  const [fixedRegister, setFixedRegister] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -54,6 +57,8 @@ export default function TranslateScreen() {
         setResult(out.text);
         setDetected(out.detected);
         setOffline(!!out.offline);
+        setGotRegister(out.register);
+        setFixedRegister(!!out.registerCorrected);
         setError(null);
       } catch (e) {
         if (mine === seq.current) setError(e instanceof Error ? e.message : 'Translation failed');
@@ -62,7 +67,7 @@ export default function TranslateScreen() {
       }
     }, 450);
     return () => clearTimeout(timer);
-  }, [text, from, to, settings.provider, settings.translationMode]);
+  }, [text, from, to, settings.provider, settings.translationMode, settings.register]);
 
   const save = () => {
     if (text.trim() && result) addHistory({ from: detected ?? from, to, source: text.trim(), result });
@@ -120,6 +125,9 @@ export default function TranslateScreen() {
       <Label>
         {langName(to)}
         {busy ? ' · translating…' : offline && result ? ' · on device' : ''}
+        {!busy && result && gotRegister && gotRegister !== 'unknown'
+          ? ` · ${gotRegister === 'formal' ? 'formal' : 'informal'}${fixedRegister ? ' (adjusted)' : ''}`
+          : ''}
       </Label>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 4 }}>
         <Text selectable style={{ color: p.text, fontSize: 19, lineHeight: 27 }}>{result}</Text>
@@ -151,7 +159,20 @@ export default function TranslateScreen() {
         <LangButton caption="To" code={to} onChange={(c) => updateSettings({ targetLang: c })} />
       </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+        {hasRegister(to) ? (
+          <Choice
+            value={settings.register}
+            onChange={(v) => updateSettings({ register: v })}
+            options={[
+              { value: 'auto', label: 'Auto' },
+              { value: 'formal', label: 'Formal' },
+              { value: 'informal', label: 'Informal' },
+            ]}
+          />
+        ) : (
+          <View />
+        )}
         <Choice
           value={settings.paneLayout}
           onChange={(v) => updateSettings({ paneLayout: v })}

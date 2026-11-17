@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, generateCode, isValidCode, formatCode, normalizeCode, buildInviteLink, parseInvite } from '../src/services/codec.ts';
+import { detectRegister, steerSource, correctItalian, hasRegister, canCorrect } from '../src/services/register.ts';
 import { THEMES, normalizeThemeId, resolveTheme, themeById } from '../src/themes.ts';
 import { ocrSupported as webOcrSupported } from '../src/services/ocr.web.ts';
 import { translate, parseGoogle, parseMyMemory, clearTranslateCache, chooseRoute, splitForLength } from '../src/services/translate.ts';
@@ -183,4 +184,54 @@ test('themes: pairs, migration and matching the phone', () => {
   assert.equal(resolveTheme('ocean', true, 'light').id, 'sky');
   assert.equal(resolveTheme('ocean', true, 'dark').id, 'ocean');
   assert.equal(resolveTheme('paper', true, 'dark').id, 'ink');
+});
+
+test('formality: reading the register out of a translation', () => {
+  // the sentences that actually matter — writing to a landlord or an office
+  assert.equal(detectRegister('Potrebbe dirmi se l\'appartamento è ancora libero?', 'it'), 'formal');
+  assert.equal(detectRegister('Mi scusi, senta, vorrebbe aiutarmi?', 'it'), 'formal');
+  assert.equal(detectRegister('Puoi dirmi se hai tempo domani?', 'it'), 'informal');
+  assert.equal(detectRegister('Ciao, come stai? Il tuo numero è giusto?', 'it'), 'informal');
+
+  // a sentence about a thing, not a person, must not read as polite address
+  assert.equal(detectRegister('La casa è grande e ha due stanze.', 'it'), 'unknown');
+
+  assert.equal(detectRegister('Pouvez-vous me dire votre nom ?', 'fr'), 'formal');
+  assert.equal(detectRegister('Tu peux me dire ton nom ?', 'fr'), 'informal');
+  assert.equal(detectRegister('Können Sie mir Ihre Adresse geben?', 'de'), 'formal');
+  assert.equal(detectRegister('Kannst du mir deine Adresse geben?', 'de'), 'informal');
+  assert.equal(detectRegister('¿Puede usted ayudarme?', 'es'), 'formal');
+
+  // English has no formal/informal address, so nothing is claimed about it
+  assert.equal(hasRegister('en'), false);
+  assert.equal(hasRegister('it'), true);
+  assert.equal(detectRegister('Can you help me?', 'en'), 'unknown');
+  assert.equal(detectRegister('', 'it'), 'unknown');
+});
+
+test('formality: steering the English before it is translated', () => {
+  const polite = steerSource("Hi, can you tell me if it's free? I want to see it. Thanks", 'en', 'formal');
+  assert.match(polite, /Good day/);
+  assert.match(polite, /could you kindly/);
+  assert.match(polite, /I would like/);
+  assert.match(polite, /it is free/);
+  assert.ok(!polite.includes("it's"), 'contractions should be expanded');
+
+  // nothing is touched when no register was asked for, or the source is not English
+  const original = 'Hi, can you tell me?';
+  assert.equal(steerSource(original, 'en', 'auto'), original);
+  assert.equal(steerSource('Ciao, puoi dirmi?', 'it', 'formal'), 'Ciao, puoi dirmi?');
+});
+
+test('formality: correcting Italian that came back in the wrong register', () => {
+  assert.equal(correctItalian('Puoi dirmi se hai tempo?', 'formal'), 'Può dirmi se ha tempo?');
+  assert.equal(correctItalian('Ciao, scusa, vuoi aiutarmi?', 'formal'), 'Buongiorno, scusi, vuole aiutarmi?');
+  assert.equal(correctItalian('Potrebbe aiutarmi?', 'informal'), 'Potresti aiutarmi?');
+  // capitalisation is kept
+  assert.equal(correctItalian('Puoi venire?', 'formal'), 'Può venire?');
+  // words with no safe counterpart are left exactly as they were
+  assert.equal(correctItalian('Il treno parte alle otto.', 'formal'), 'Il treno parte alle otto.');
+  // only Italian is corrected; the rest are detected and reported
+  assert.equal(canCorrect('it'), true);
+  assert.equal(canCorrect('fr'), false);
 });

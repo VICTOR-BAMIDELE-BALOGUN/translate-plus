@@ -9,6 +9,7 @@ Everything it depends on is free and needs no server of your own.
 | Feature | How it works | Cost |
 |---|---|---|
 | Translate tab | Two panes that scroll on their own, stacked or side by side | Free |
+| Formality | Choose "Lei" or "tu"; the app steers it, reads it back and labels the result | Free |
 | Themes | Eight themes in four light/dark pairs, optionally following the phone | Free |
 | Text translation, 60 languages, auto-detect | Google public endpoint, MyMemory as automatic fallback | Free, no key |
 | Offline translation, 49 languages | Google ML Kit on-device models, downloaded per language (~30 MB) | Free, no key, no internet |
@@ -51,6 +52,32 @@ part of the Android app only.
 What differs from the installed Android app: speech recognition uses the browser's engine, which
 works in Chrome and Safari but not Firefox; offline translation models are not available; and the
 Android-specific microphone behaviour does not apply.
+
+## Formality — "Lei" or "tu"
+
+Free translation engines choose between formal and informal address more or less at random, so a
+message to a landlord can come back sounding like one to a friend. The Translate tab shows an
+**Auto / Formal / Informal** control whenever the target language makes that distinction (Italian,
+French, German, Spanish, Portuguese, Dutch, Polish, Russian, Turkish), and Settings holds the default.
+
+Three things happen, in order of how reliable they are:
+
+1. **Steering.** When you write in English, the English is rewritten before translating — "can you"
+   becomes "could you kindly", contractions are expanded, "thanks" becomes "thank you". The engine
+   then carries that register into the translation. This risks nothing grammatically, because the
+   engine still writes the target language itself.
+2. **Reading it back.** The result is checked for markers that cannot mean anything else — `potrebbe`,
+   `scusi`, `vorrebbe` against `puoi`, `hai`, `tuo`. Ambiguous words like `è` and `ha` are ignored on
+   purpose, since they describe things as often as they address people. The label above the
+   translation says which register actually came out.
+3. **Correcting, Italian only.** If it still came out wrong, a table of unambiguous verb forms fixes
+   it (`puoi`→`può`, `scusa`→`scusi`, `vuoi`→`vuole`) and the label says "(adjusted)". Clitics like
+   `ti` are deliberately left alone, because the right replacement depends on the case and a wrong
+   guess produces broken Italian.
+
+**This is a nudge, not a guarantee.** Doing it properly needs a model that understands the sentence,
+which no free keyless service offers. What the app can promise is that it tells you what it produced,
+so you can check before sending something that matters.
 
 ## Themes
 

@@ -18,6 +18,7 @@ export type Settings = {
   onDeviceRecognition: boolean;
   sentencePause: number; // ms of silence before a sentence counts as finished
   provider: 'google' | 'mymemory';
+  register: 'auto' | 'formal' | 'informal';
   translationMode: 'online' | 'offlineFirst' | 'offlineOnly';
   offlineLanguages: string[];
   theme: string; // a theme id from theme.ts
@@ -46,6 +47,7 @@ export const DEFAULT_SETTINGS: Settings = {
   onDeviceRecognition: false,
   sentencePause: 1500,
   provider: 'google',
+  register: 'auto',
   translationMode: 'offlineFirst',
   offlineLanguages: [],
   theme: 'midnight',

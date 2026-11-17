@@ -355,6 +355,21 @@ export default function SettingsScreen() {
           options={[{ value: 'google', label: 'Google (default)' }, { value: 'mymemory', label: 'MyMemory' }]}
         />
         <Text style={{ color: p.sub, fontSize: 12, marginTop: 6 }}>Both are free with no account. If one fails, the other is tried automatically.</Text>
+
+        <View style={{ height: 14 }} />
+        <Label>How to address people</Label>
+        <Choice
+          value={s.register}
+          onChange={(v) => updateSettings({ register: v })}
+          options={[
+            { value: 'auto', label: 'Auto' },
+            { value: 'formal', label: 'Formal' },
+            { value: 'informal', label: 'Informal' },
+          ]}
+        />
+        <Text style={{ color: p.sub, fontSize: 12, marginTop: 6, lineHeight: 18 }}>
+          Italian "Lei" or "tu", German "Sie" or "du", and the same choice in French, Spanish and others. Free translation engines pick one at random, which is how you end up addressing an official like a friend. Translate+ steers the wording, then tells you which one actually came out. It is a nudge, not a guarantee — check the label on the translation when it matters.
+        </Text>
       </Card>
 
       <OfflineCard />

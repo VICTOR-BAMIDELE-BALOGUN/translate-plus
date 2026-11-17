@@ -1,6 +1,7 @@
 // Speech recognition hook: continuous listening with automatic restart, live partial
 // results, and a half-duplex pause while the app itself is speaking (prevents echo loops).
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { getSettings } from '../store';
 import { langByCode } from '../languages';
@@ -12,6 +13,15 @@ type Options = {
 };
 
 const BENIGN = new Set(['no-speech', 'aborted', 'speech-timeout']);
+
+// WebKit's continuous mode is unreliable: it locks the microphone up, especially
+// after the app has played audio. Every iOS browser is WebKit, so this covers all
+// of them. We ask for one utterance at a time and restart ourselves instead — the
+// module builds a fresh recogniser on each start, which is the documented workaround.
+const isWebKit =
+  Platform.OS === 'web' &&
+  typeof navigator !== 'undefined' &&
+  /iPad|iPhone|iPod/.test(navigator.userAgent || '');
 
 export function useListener(options: Options) {
   const [listening, setListening] = useState(false);
@@ -32,7 +42,7 @@ export function useListener(options: Options) {
       ExpoSpeechRecognitionModule.start({
         lang: langByCode(lang.current).speech || 'en-US',
         interimResults: true,
-        continuous: true,
+        continuous: !isWebKit,
         addsPunctuation: true,
         maxAlternatives: 1,
         requiresOnDeviceRecognition: getSettings().onDeviceRecognition,

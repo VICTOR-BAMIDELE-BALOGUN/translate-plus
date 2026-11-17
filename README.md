@@ -51,6 +51,24 @@ Once installed it opens with no connection, because a service worker keeps the a
 device. Translating still needs the internet in the web version — the on-device models below are
 part of the Android app only.
 
+### iPhone and iPad: what to expect
+
+Speech recognition does work in an installed web app on iOS, but WebKit's *continuous* mode locks
+the microphone up, particularly after the app has played audio — which is exactly what a translator
+does. Translate+ therefore asks for one utterance at a time on iOS and restarts the recogniser
+itself, building a fresh one each time, which is the documented workaround.
+
+Two things remain outside the app's control on iOS:
+
+- **iOS 26 broke audio playback in installed web apps** after the app is closed and reopened; the
+  same page works in a Safari tab. Spoken translations may go silent until the app is force-quit and
+  reopened. This is an open WebKit regression, not something the app can fix.
+- **Safari keeps separate storage** for a page in a tab and the same page installed to the Home
+  Screen, so settings saved in one do not appear in the other, and Safari may clear an unused
+  web app's data after a few weeks.
+
+Installing on iOS is also manual — Share → Add to Home Screen — with no install prompt.
+
 What differs from the installed Android app: speech recognition uses the browser's engine, which
 works in Chrome and Safari but not Firefox; offline translation models are not available; and the
 Android-specific microphone behaviour does not apply.

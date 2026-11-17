@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Linking, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import { Btn, Card, Choice, ErrorText, Label, LangButton, Stepper, ToggleRow, styles } from '../components/ui';
-import { usePalette } from '../theme';
+import { THEMES, usePalette } from '../theme';
 import { DEFAULT_BROKER, clearHistory, resetAll, updateSettings, useSettings } from '../store';
 import { createVoice, deleteVoice, getFishKey, setFishKey } from '../services/fish';
 import { secretsAreProtected } from '../services/keystore';
@@ -385,8 +385,47 @@ export default function SettingsScreen() {
       <VoiceClone />
 
       <Card>
-        <Label>Display</Label>
-        <Choice value={s.theme} onChange={(v) => updateSettings({ theme: v })} options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'system', label: 'Match phone' }]} />
+        <Label>Appearance</Label>
+        <ToggleRow
+          title="Match the phone's light and dark setting"
+          hint="Switches to the matching theme when your phone changes"
+          value={s.followSystem}
+          onChange={(v) => updateSettings({ followSystem: v })}
+        />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+          {THEMES.map((t) => {
+            const on = t.id === s.theme;
+            return (
+              <Pressable
+                key={t.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={`${t.name} theme`}
+                onPress={() => updateSettings({ theme: t.id })}
+                style={{
+                  width: '48%',
+                  backgroundColor: t.bg,
+                  borderColor: on ? p.accent : t.line,
+                  borderWidth: on ? 2 : 1,
+                  borderRadius: 12,
+                  paddingVertical: 12,
+                  paddingHorizontal: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: t.accent }} />
+                <Text style={{ color: t.text, fontWeight: on ? '800' : '500', fontSize: 14, flex: 1 }}>{t.name}</Text>
+                {on ? <Text style={{ color: p.accent, fontSize: 13, fontWeight: '800' }}>✓</Text> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={{ color: p.sub, fontSize: 12, marginTop: 8, lineHeight: 18 }}>
+          Ink and Paper are the highest-contrast pair, which helps in bright sunlight.
+        </Text>
+
         <View style={{ height: 10 }} />
         <Label>Translate tab layout</Label>
         <Choice

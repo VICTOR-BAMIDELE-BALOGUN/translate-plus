@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, generateCode, isValidCode, formatCode, normalizeCode, buildInviteLink, parseInvite } from '../src/services/codec.ts';
+import { THEMES, normalizeThemeId, resolveTheme, themeById } from '../src/themes.ts';
 import { ocrSupported as webOcrSupported } from '../src/services/ocr.web.ts';
 import { translate, parseGoogle, parseMyMemory, clearTranslateCache, chooseRoute, splitForLength } from '../src/services/translate.ts';
 
@@ -157,4 +158,29 @@ test('photo reading covers the languages that matter here', () => {
   // a language with no model must be reported, not silently attempted
   assert.equal(webOcrSupported('ig'), false);
   assert.equal(webOcrSupported('auto'), false);
+});
+
+test('themes: pairs, migration and matching the phone', () => {
+  assert.ok(THEMES.length >= 6, 'there should be several themes');
+  const ids = new Set(THEMES.map((t) => t.id));
+  for (const t of THEMES) {
+    assert.ok(ids.has(t.pair), `${t.id} pairs with a theme that does not exist`);
+    assert.notEqual(t.pair, t.id);
+    assert.notEqual(themeById(t.pair).mode, t.mode, `${t.id} should pair with the opposite mode`);
+    for (const key of ['bg', 'card', 'text', 'sub', 'line', 'accent', 'accentText'])
+      assert.match(t[key], /^#[0-9A-Fa-f]{6}$/, `${t.id}.${key} is not a colour`);
+  }
+
+  // settings saved before themes had names must still resolve
+  assert.equal(normalizeThemeId('dark'), 'midnight');
+  assert.equal(normalizeThemeId('light'), 'daylight');
+  assert.equal(normalizeThemeId('system'), 'midnight');
+  assert.equal(normalizeThemeId('nonsense'), 'midnight');
+  assert.equal(normalizeThemeId('ocean'), 'ocean');
+
+  // matching the phone swaps to the counterpart, and only then
+  assert.equal(resolveTheme('ocean', false, 'light').id, 'ocean');
+  assert.equal(resolveTheme('ocean', true, 'light').id, 'sky');
+  assert.equal(resolveTheme('ocean', true, 'dark').id, 'ocean');
+  assert.equal(resolveTheme('paper', true, 'dark').id, 'ink');
 });

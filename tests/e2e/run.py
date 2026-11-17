@@ -106,7 +106,11 @@ with sync_playwright() as pw:
     a.get_by_placeholder('Your name in chats').fill('Victor')
     a.get_by_role('button', name='+').first.click()
     check('speed stepper works', a.locator('text=1.1×').count() == 1)
-    a.get_by_role('button', name='Light').click()
+    a.get_by_role('button', name='Ocean theme').click()
+    a.wait_for_timeout(400)
+    check('theme choices are listed', a.get_by_role('button', name=re.compile(' theme$')).count() >= 6)
+    bg = a.evaluate("getComputedStyle(document.body).backgroundColor")
+    check('picking a theme repaints the app', bg not in ('rgba(0, 0, 0, 0)', 'rgb(14, 21, 19)'), bg)
     a.get_by_role('button', name='My cloned voice').click()
     check('clone voice guarded until a voice exists', a.locator('text=Create a cloned voice below first.').count() == 1)
     # offline translation card
@@ -128,6 +132,7 @@ with sync_playwright() as pw:
     a.screenshot(path='4-settings.png', full_page=False)
     a.reload(); a.wait_for_selector('text=Translate')
     tab(a, 'Settings')
+    check('chosen theme survives a restart', a.evaluate("getComputedStyle(document.body).backgroundColor") == bg, bg)
     check('settings persist after restart', a.locator('input[value="Victor"]').count() == 1 and a.locator('text=1.1×').count() == 1
           and a.locator('input[value="ws://127.0.0.1:18883/mqtt"]').count() == 1)
 

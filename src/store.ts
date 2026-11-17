@@ -20,7 +20,8 @@ export type Settings = {
   provider: 'google' | 'mymemory';
   translationMode: 'online' | 'offlineFirst' | 'offlineOnly';
   offlineLanguages: string[];
-  theme: 'dark' | 'light' | 'system';
+  theme: string; // a theme id from theme.ts
+  followSystem: boolean;
   captionSize: number;
   paneLayout: 'stacked' | 'side';
   brokerUrl: string;
@@ -47,7 +48,8 @@ export const DEFAULT_SETTINGS: Settings = {
   provider: 'google',
   translationMode: 'offlineFirst',
   offlineLanguages: [],
-  theme: 'dark',
+  theme: 'midnight',
+  followSystem: false,
   captionSize: 22,
   paneLayout: 'stacked',
   brokerUrl: DEFAULT_BROKER,
@@ -113,6 +115,18 @@ export async function loadStore(): Promise<void> {
     }
   } catch {
     // corrupted storage: start clean rather than crash
+  }
+  // settings saved before themes had names: 'system' meant follow the phone
+  const saved = state.settings.theme;
+  if (saved === 'system' || saved === 'dark' || saved === 'light') {
+    state = {
+      ...state,
+      settings: {
+        ...state.settings,
+        theme: saved === 'light' ? 'daylight' : 'midnight',
+        followSystem: saved === 'system',
+      },
+    };
   }
   if (!state.deviceId) state = { ...state, deviceId: newId() };
   state = { ...state, ready: true };

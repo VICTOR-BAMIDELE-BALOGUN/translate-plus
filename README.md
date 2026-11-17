@@ -9,6 +9,7 @@ Everything it depends on is free and needs no server of your own.
 | Feature | How it works | Cost |
 |---|---|---|
 | Translate tab | Two panes that scroll on their own, stacked or side by side | Free |
+| Themes | Eight themes in four light/dark pairs, optionally following the phone | Free |
 | Text translation, 60 languages, auto-detect | Google public endpoint, MyMemory as automatic fallback | Free, no key |
 | Offline translation, 49 languages | Google ML Kit on-device models, downloaded per language (~30 MB) | Free, no key, no internet |
 | Voice input | Android speech recognition (optionally on-device) | Free |
@@ -50,6 +51,22 @@ part of the Android app only.
 What differs from the installed Android app: speech recognition uses the browser's engine, which
 works in Chrome and Safari but not Firefox; offline translation models are not available; and the
 Android-specific microphone behaviour does not apply.
+
+## Themes
+
+Settings → Appearance has eight themes in four light/dark pairs:
+
+| Dark | Light | Character |
+|---|---|---|
+| Midnight | Daylight | the default, green accent |
+| Ocean | Sky | deep blue, cyan accent |
+| Dusk | Sand | warm plum and terracotta |
+| Ink | Paper | highest contrast, for bright sunlight |
+
+"Match the phone's light and dark setting" swaps to the counterpart of whichever theme you picked,
+so choosing Ocean gives you Sky when the phone turns light rather than something unrelated. On the
+web the page background and the browser's theme colour follow the theme too, so an installed app
+has no mismatched edges.
 
 ## Translate tab layout
 

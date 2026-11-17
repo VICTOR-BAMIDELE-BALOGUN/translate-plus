@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, BackHandler, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Platform, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
@@ -44,6 +44,15 @@ function Shell() {
     loadStore();
   }, []);
 
+  // on the web the page itself sits behind the app: keep it, and the browser's own
+  // chrome on an installed app, in the theme's colours
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    document.body.style.backgroundColor = p.bg;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', p.bg);
+  }, [p.bg]);
+
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (room) {
@@ -59,7 +68,7 @@ function Shell() {
     return () => sub.remove();
   }, [room, tab]);
 
-  const lightBar = settings.theme === 'light';
+  const lightBar = p.mode === 'light';
 
   if (!ready) {
     return (

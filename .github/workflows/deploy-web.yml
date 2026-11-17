@@ -25,10 +25,9 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm test
-      # Pages serves the site under /<repo>/, so the bundle needs that prefix
       - run: npx expo export --platform web --output-dir dist
-        env:
-          EXPO_BASE_URL: /${{ github.event.repository.name }}
+      # relative paths, so the same build works under /<repo>/ on Pages or anywhere else
+      - run: node scripts/make-portable.mjs dist
       - run: node tests/check-web-build.mjs dist
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

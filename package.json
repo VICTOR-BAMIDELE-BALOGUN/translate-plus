@@ -36,7 +36,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "test": "node --test tests/core.test.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:web": "expo export --platform web --output-dir dist && node scripts/make-portable.mjs dist && node tests/check-web-build.mjs dist"
   },
   "private": true
 }

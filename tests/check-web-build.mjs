@@ -16,9 +16,10 @@ for (const needle of ['manifest.json', 'apple-touch-icon', 'serviceWorker', 'the
 
 const script = html.match(/<script src="([^"]+)"/)?.[1];
 if (!script) fail('index.html has no bundle script');
-const base = (process.env.EXPO_BASE_URL || '').replace(/\/+$/, '');
-if (!script.startsWith(base + '/_expo/')) fail(`bundle path ${script} does not start with ${base}/_expo/`);
-if (!existsSync(join(dir, script.replace(base, '').replace(/^\//, '')))) fail(`bundle ${script} is not in the output`);
+// a relative path is what makes the same folder work at a domain root or in a subfolder
+if (!script.startsWith('./_expo/')) fail(`bundle path ${script} is not relative — run scripts/make-portable.mjs`);
+if (!existsSync(join(dir, script.replace('./', '')))) fail(`bundle ${script} is not in the output`);
+for (const ref of html.matchAll(/(?:src|href)="(\/[^/][^"]*)"/g)) fail(`absolute path ${ref[1]} breaks in a subfolder`);
 
 const manifest = JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8'));
 if (manifest.display !== 'standalone') fail('manifest must use display: standalone to install');

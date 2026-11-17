@@ -25,10 +25,15 @@ Everything it depends on is free and needs no server of your own.
 
 The web build is a progressive web app, so both of you can install it straight from the browser.
 
-**Publish it once (free).** Push this repo to GitHub, then Settings → Pages → Source: GitHub Actions.
-The `deploy-web.yml` workflow builds it and puts it at `https://<your-user>.github.io/<repo>/`.
-It sets the base path automatically from the repo name, and `tests/check-web-build.mjs` fails the
-build if the result would not be installable.
+**Publish it once (free).** Either:
+
+- Push this repo to GitHub, then Settings → Pages → Source: GitHub Actions. The `deploy-web.yml`
+  workflow builds and publishes it at `https://<your-user>.github.io/<repo>/`.
+- Or run `npm run build:web` and upload the resulting `dist/` folder to any static host.
+
+The build uses relative paths, so the same `dist/` folder works at a domain root or in a subfolder
+with no rebuild. `tests/check-web-build.mjs` runs as part of it and fails the build if the result
+would not be installable.
 
 **Android.** Open that address in Chrome. The app shows an Install button, or use Chrome's menu →
 "Add to Home screen". It then opens full screen with its own icon.

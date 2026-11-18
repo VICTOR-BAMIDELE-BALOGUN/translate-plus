@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, generateCode, isValidCode, formatCode, normalizeCode, buildInviteLink, parseInvite } from '../src/services/codec.ts';
+import italianPack from '../src/learn/italian.ts';
 import { extractDetails, buildRecap } from '../src/services/recap.ts';
 import { writtenInvite, hasWrittenInvite, withLink, ENGLISH_INVITE } from '../src/invitemessage.ts';
 import { detectRegister, steerSource, correctItalian, hasRegister, canCorrect } from '../src/services/register.ts';
@@ -303,4 +304,44 @@ test('recap pulls out what you need after a conversation', () => {
   assert.match(text, /Signora Rossi: Il canone/);
   // both sides of a translated line are kept
   assert.match(text, /→/);
+});
+
+test('the bundled Italian course is complete and consistent', () => {
+  assert.equal(italianPack.lang, 'it');
+  assert.ok(italianPack.topics.length >= 8, 'should cover a real range of situations');
+
+  const ids = new Set();
+  let phrases = 0;
+  for (const topic of italianPack.topics) {
+    assert.ok(!ids.has(topic.id), `duplicate topic id ${topic.id}`);
+    ids.add(topic.id);
+    assert.ok(topic.phrases.length >= 8, `${topic.id} is too thin`);
+    for (const ph of topic.phrases) {
+      phrases++;
+      assert.ok(ph.it && ph.en && ph.say, `incomplete phrase in ${topic.id}: ${JSON.stringify(ph)}`);
+      // the pronunciation guide must not just repeat the Italian
+      assert.notEqual(ph.say.toLowerCase(), ph.it.toLowerCase());
+      // English side should not have leaked into the Italian
+      // "A che ora..." is Italian, so only unambiguous English openers are flagged
+      assert.ok(!/^(the|is it|are you|do you|can you|how much)\b/i.test(ph.it), `${ph.it} looks like English`);
+    }
+  }
+  assert.ok(phrases >= 100, `only ${phrases} phrases bundled`);
+
+  // the situations that matter to someone living in Italy are covered
+  for (const id of ['essentials', 'university', 'flat', 'offices', 'health'])
+    assert.ok(ids.has(id), `missing topic: ${id}`);
+
+  // every resource is a real link with its cost stated
+  assert.ok(italianPack.resources.length >= 5);
+  for (const r of italianPack.resources) {
+    assert.match(r.url, /^https:\/\//, `${r.name} has no https link`);
+    assert.ok(r.cost.toLowerCase().includes('free'), `${r.name} is listed without being free`);
+    assert.ok(r.what.length > 40, `${r.name} needs a real description`);
+  }
+  // the free state courses in Italy are the most valuable entry and must be there
+  assert.ok(italianPack.resources.some((r) => r.name.includes('CPIA')));
+
+  assert.ok(italianPack.sounds.length >= 8);
+  assert.ok(italianPack.notes.some((n) => /Lei and tu/i.test(n.title)), 'the formality note must be there');
 });

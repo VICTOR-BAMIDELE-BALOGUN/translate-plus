@@ -9,6 +9,7 @@ Everything it depends on is free and needs no server of your own.
 | Feature | How it works | Cost |
 |---|---|---|
 | Translate tab | Two panes that scroll on their own, stacked or side by side | Free |
+| Learn | Preloaded Italian phrasebook, pronunciation, notes and free course links — all offline | Free |
 | Recaps | Key details and the transcript after a conversation | Free |
 | Invitation note | Call links go out with a message in the other person's language | Free |
 | Formality | Choose "Lei" or "tu"; the app steers it, reads it back and labels the result | Free |
@@ -72,6 +73,32 @@ Installing on iOS is also manual — Share → Add to Home Screen — with no in
 What differs from the installed Android app: speech recognition uses the browser's engine, which
 works in Chrome and Safari but not Firefox; offline translation models are not available; and the
 Android-specific microphone behaviour does not apply.
+
+## Learn (preloaded)
+
+A Learn tab with Italian course material built into the app — no connection needed, nothing to
+download. 131 phrases across 10 situations chosen for living in Italy rather than visiting:
+the first twenty words, university, renting a flat, offices and paperwork, shops, bars and
+restaurants, doctor and pharmacy, getting around, work, and numbers and time. Each phrase has the
+Italian, the English, a pronunciation respelling, and a LEI marker where the polite form is the one
+to use. Tap to hear it, hold to copy, and Practice covers the Italian so you can test yourself.
+
+Two more sections are bundled: how Italian spelling maps to sound (the twelve rules that let you
+read any word aloud), and short notes on the things that trip English speakers up — Lei versus tu,
+which greeting at which hour, gendered nouns, and false friends.
+
+The **Free courses** section links out to resources checked for cost:
+
+| | |
+|---|---|
+| CPIA | Free state courses in Italy, beginner to B1, with the certificate that counts for a long-stay permit. One per province, Ancona included |
+| Language Transfer | 45 audio lessons, about six hours, donation-funded |
+| Coffee Break Italian | Podcast free in three levels of 40 lessons |
+| RAI Play | Italian television and news, free |
+| Duolingo, Anki, Tandem | Free tiers |
+
+Adding another language means writing one pack in `src/learn/` and listing it; the screen and the
+tests pick it up automatically.
 
 ## Recaps
 

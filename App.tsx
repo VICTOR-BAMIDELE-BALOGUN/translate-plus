@@ -10,6 +10,7 @@ import TranslateScreen from './src/screens/TranslateScreen';
 import TalkScreen from './src/screens/TalkScreen';
 import CaptionsScreen from './src/screens/CaptionsScreen';
 import ImageScreen from './src/screens/ImageScreen';
+import LearnScreen from './src/screens/LearnScreen';
 import ChatsScreen from './src/screens/ChatsScreen';
 import RoomScreen from './src/screens/RoomScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -23,12 +24,13 @@ nacl.setPRNG((x, n) => {
   for (let i = 0; i < n; i++) x[i] = bytes[i];
 });
 
-type Tab = 'translate' | 'talk' | 'captions' | 'image' | 'chats' | 'settings';
+type Tab = 'translate' | 'talk' | 'captions' | 'image' | 'learn' | 'chats' | 'settings';
 const TABS: { id: Tab; label: string; glyph: string }[] = [
   { id: 'translate', label: 'Translate', glyph: 'Aあ' },
-  { id: 'talk', label: 'Face to Face', glyph: '⇅' },
+  { id: 'talk', label: 'Face', glyph: '⇅' },
   { id: 'captions', label: 'Captions', glyph: '▤' },
   { id: 'image', label: 'Photo', glyph: '◳' },
+  { id: 'learn', label: 'Learn', glyph: '✱' },
   { id: 'chats', label: 'Chats', glyph: '✉' },
   { id: 'settings', label: 'Settings', glyph: '⚙' },
 ];
@@ -106,6 +108,7 @@ function Shell() {
             {tab === 'talk' ? <TalkScreen /> : null}
             {tab === 'captions' ? <CaptionsScreen /> : null}
             {tab === 'image' ? <ImageScreen /> : null}
+            {tab === 'learn' ? <LearnScreen /> : null}
             {tab === 'chats' ? <ChatsScreen onOpen={setRoom} /> : null}
             {tab === 'settings' ? <SettingsScreen /> : null}
           </View>
@@ -119,7 +122,7 @@ function Shell() {
                   accessibilityState={{ selected: on }}
                   accessibilityLabel={t.label}
                   onPress={() => setTab(t.id)}
-                  style={{ flex: 1, alignItems: 'center', paddingVertical: 8 }}
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 8, paddingHorizontal: 2 }}
                 >
                   <Text style={{ color: on ? p.accent : p.sub, fontSize: 18, fontWeight: '800' }}>{t.glyph}</Text>
                   <Text numberOfLines={1} style={{ color: on ? p.accent : p.sub, fontSize: 10, fontWeight: '700', marginTop: 2 }}>{t.label}</Text>

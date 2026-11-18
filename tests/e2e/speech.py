@@ -37,7 +37,7 @@ with sync_playwright() as pw:
     p=c.new_page(); errs=[]
     p.on('pageerror', lambda e: errs.append(str(e)))
     p.goto(URL); p.wait_for_selector('text=Translate')
-    p.get_by_role('tab',name='Face to Face').click()
+    p.get_by_role('tab',name='Face').click()
     p.get_by_role('button',name=re.compile('^Speak ')).last.click()
     p.wait_for_timeout(400)
     check('microphone started', p.evaluate("window.__speech.starts") >= 1)

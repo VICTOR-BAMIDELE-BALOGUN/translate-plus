@@ -40,7 +40,7 @@ with sync_playwright() as pw:
     a = new_page(browser, errA)
 
     # 1 shell
-    for t in ['Translate', 'Face to Face', 'Captions', 'Chats', 'Settings']:
+    for t in ['Translate', 'Face', 'Captions', 'Photo', 'Learn', 'Chats', 'Settings']:
         check(f'tab present: {t}', a.get_by_role('tab', name=t).count() == 1)
 
     # 2 translate
@@ -84,7 +84,7 @@ with sync_playwright() as pw:
     a.screenshot(path='1-translate.png')
 
     # 3 face to face
-    tab(a, 'Face to Face')
+    tab(a, 'Face')
     check('face to face shows both sides', a.get_by_role('button', name=re.compile('^Speak ')).count() == 2)
     a.screenshot(path='2-face.png')
 

@@ -78,3 +78,13 @@ export function langByCode(code: string): Lang {
 export function langName(code: string): string {
   return langByCode(code).name;
 }
+
+/**
+ * The locale to use for speech, honouring the accent the user picked.
+ * Imported lazily by callers that have access to settings.
+ */
+export function speechLocaleFor(code: string, accents: Record<string, string>): string {
+  const chosen = accents[code];
+  if (chosen) return chosen;
+  return langByCode(code).speech || 'en-US';
+}

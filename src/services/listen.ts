@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { getSettings } from '../store';
-import { langByCode } from '../languages';
+import { speechLocaleFor } from '../languages';
 import { isSpeaking, onSpeakingChange } from './tts';
 
 type Options = {
@@ -40,7 +40,7 @@ export function useListener(options: Options) {
     try {
       running.current = true;
       ExpoSpeechRecognitionModule.start({
-        lang: langByCode(lang.current).speech || 'en-US',
+        lang: speechLocaleFor(lang.current, getSettings().accents),
         interimResults: true,
         continuous: !isWebKit,
         addsPunctuation: true,

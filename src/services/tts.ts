@@ -5,7 +5,7 @@ import * as Speech from 'expo-speech';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
 import { getSettings } from '../store';
-import { langByCode } from '../languages';
+import { speechLocaleFor } from '../languages';
 import { synthesize } from './fish';
 
 let chain: Promise<void> = Promise.resolve();
@@ -38,7 +38,7 @@ export function lastVoiceError() {
 
 function systemSpeak(text: string, lang: string): Promise<void> {
   return new Promise((resolve) => {
-    const speech = langByCode(lang).speech || undefined;
+    const speech = speechLocaleFor(lang, getSettings().accents);
     Speech.speak(text.slice(0, Speech.maxSpeechInputLength), {
       language: speech,
       rate: getSettings().speechRate,

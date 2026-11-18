@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, generateCode, isValidCode, formatCode, normalizeCode, buildInviteLink, parseInvite } from '../src/services/codec.ts';
+import { variantsFor, hasVariants, belongsTo, mergeVariants, localeFor } from '../src/services/accents.ts';
 import { detect, rank, segmentByLanguage, languagesIn } from '../src/services/detect.ts';
 import italianPack from '../src/learn/italian.ts';
 import { extractDetails, buildRecap } from '../src/services/recap.ts';
@@ -402,4 +403,36 @@ test('a conversation that switches language mid-way', () => {
   // a single language stays a single block
   assert.equal(languagesIn('Hello there. How are you today? I am fine.').length, 1);
   assert.deepEqual(languagesIn(''), []);
+});
+
+test('accents: regional varieties of a language', () => {
+  // the varieties that matter for a Nigerian in Italy are all offered
+  const english = variantsFor('en').map((v) => v.code);
+  for (const code of ['en-US', 'en-GB', 'en-NG', 'en-GH', 'en-IN', 'en-ZA'])
+    assert.ok(english.includes(code), `missing ${code}`);
+  assert.ok(hasVariants('en'));
+  assert.ok(hasVariants('it'));
+  // a language with a single variety offers no pointless choice
+  assert.equal(hasVariants('yo'), false);
+
+  assert.ok(belongsTo('en-NG', 'en'));
+  assert.ok(belongsTo('en_NG', 'en'));
+  assert.ok(!belongsTo('en-NG', 'it'));
+
+  // what the phone reports is merged in, and what it lacks is marked
+  const merged = mergeVariants('en', ['en-US', 'en_NG', 'en-JM']);
+  const byCode = Object.fromEntries(merged.map((v) => [v.code, v]));
+  assert.equal(byCode['en-US'].installed, true);
+  assert.equal(byCode['en-NG'].installed, true, 'underscore locales must match');
+  assert.equal(byCode['en-GB'].installed, false);
+  assert.ok(byCode['en-JM'], 'a locale only the phone knows about is still offered');
+
+  // with nothing reported, nothing is claimed either way
+  assert.equal(mergeVariants('en', [])[0].installed, undefined);
+
+  // the chosen accent is used, and a stale choice from another language is ignored
+  assert.equal(localeFor('en', { en: 'en-NG' }, 'en-US'), 'en-NG');
+  assert.equal(localeFor('en', {}, 'en-US'), 'en-US');
+  assert.equal(localeFor('en', { en: 'it-IT' }, 'en-US'), 'en-US');
+  assert.equal(localeFor('yo', {}, 'yo-NG'), 'yo-NG');
 });

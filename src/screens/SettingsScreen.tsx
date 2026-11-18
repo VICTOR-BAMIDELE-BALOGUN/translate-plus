@@ -12,6 +12,7 @@ import { downloadOfflineModel, offlineAvailable, offlineLanguageCodes, offlineSu
 import { langName } from '../languages';
 import { buildInviteLink, defaultLinkBase } from '../invite';
 import { IOS_STEPS, runInstall, useInstallState } from '../components/InstallPrompt';
+import AccentCard from '../components/AccentCard';
 
 const SAMPLE_TEXT =
   'Hello, this is my voice. I am recording a short sample so that my translations can sound like me. ' +
@@ -396,6 +397,8 @@ export default function SettingsScreen() {
 
         <Stepper title="Speaking speed" value={s.speechRate.toFixed(1) + '×'} onMinus={() => rate(-0.1)} onPlus={() => rate(0.1)} />
       </Card>
+
+      <AccentCard />
 
       <VoiceClone />
 

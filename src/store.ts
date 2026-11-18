@@ -16,6 +16,7 @@ export type Settings = {
   fishModel: string;
   pauseMicWhileSpeaking: boolean;
   onDeviceRecognition: boolean;
+  accents: Record<string, string>; // language code -> chosen regional locale
   sentencePause: number; // ms of silence before a sentence counts as finished
   provider: 'google' | 'mymemory';
   register: 'auto' | 'formal' | 'informal';
@@ -46,6 +47,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fishModel: 's2.1-pro-free',
   pauseMicWhileSpeaking: true,
   onDeviceRecognition: false,
+  accents: {},
   sentencePause: 1500,
   provider: 'google',
   register: 'auto',

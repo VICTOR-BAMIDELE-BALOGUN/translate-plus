@@ -9,6 +9,7 @@ Everything it depends on is free and needs no server of your own.
 | Feature | How it works | Cost |
 |---|---|---|
 | Translate tab | Two panes that scroll on their own, stacked or side by side | Free |
+| Accents | Pick the regional variety for listening and speaking; the device's real locales are shown | Free |
 | Mixed languages | Text that switches language is split and translated block by block; quick switching for spoken conversations | Free |
 | Learn | Preloaded Italian phrasebook, pronunciation, notes and free course links — all offline | Free |
 | Recaps | Key details and the transcript after a conversation | Free |
@@ -74,6 +75,26 @@ Installing on iOS is also manual — Share → Add to Home Screen — with no in
 What differs from the installed Android app: speech recognition uses the browser's engine, which
 works in Chrome and Safari but not Firefox; offline translation models are not available; and the
 Android-specific microphone behaviour does not apply.
+
+## Accents
+
+Settings → Accent lets you choose which variety of a language to listen for and speak in, for the
+languages you actually use. English offers United States, United Kingdom, Nigeria, Ghana, Kenya,
+South Africa, India, Ireland, Australia, Canada, Philippines and Singapore; Italian, German, French,
+Spanish, Portuguese, Arabic, Dutch and Swahili have their own lists. The app also asks the device
+which locales it really has and marks the ones it lacks, rather than offering a choice that silently
+does nothing.
+
+This matters: a recogniser trained on one variety does measurably worse on another, so a Nigerian
+speaking English is understood better as Nigerian English than as American English. The same chosen
+locale is used for the voice that speaks back.
+
+**What it cannot do**, and the app says so in that card: there is no model for Italian as spoken by
+a Nigerian, or Chinese as spoken by a Ghanaian. Speaking a language that is not your own is harder
+for every recogniser and no setting changes that — speak a little slower, keep the phone close, and
+correct the text before sending when it matters. In Chinese, Yoruba and other tonal languages the
+tone carries meaning, so a wrong tone is heard as a different word. The app also reads words, not
+feelings: it does not detect sarcasm, irony or mood.
 
 ## Conversations in more than one language
 

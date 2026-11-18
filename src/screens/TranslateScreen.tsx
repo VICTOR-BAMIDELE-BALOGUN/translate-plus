@@ -20,6 +20,7 @@ export default function TranslateScreen() {
   const [result, setResult] = useState('');
   const [detected, setDetected] = useState<string | undefined>();
   const [offline, setOffline] = useState(false);
+  const [mixed, setMixed] = useState<string[]>([]);
   const [gotRegister, setGotRegister] = useState<Detected | undefined>();
   const [fixedRegister, setFixedRegister] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -57,6 +58,7 @@ export default function TranslateScreen() {
         setResult(out.text);
         setDetected(out.detected);
         setOffline(!!out.offline);
+        setMixed(out.languages ?? []);
         setGotRegister(out.register);
         setFixedRegister(!!out.registerCorrected);
         setError(null);
@@ -98,7 +100,13 @@ export default function TranslateScreen() {
   const sourcePane = (
     <Card style={{ flex: 1, marginBottom: sideBySide ? 0 : 10, marginRight: sideBySide ? 5 : 0 }}>
       <Label>
-        {from === 'auto' ? (detected && text.trim() ? `Detected: ${langName(detected)}` : 'Detect language') : langName(from)}
+        {from === 'auto'
+          ? mixed.length > 1
+            ? `Detected: ${mixed.map(langName).join(' + ')}`
+            : detected && text.trim()
+            ? `Detected: ${langName(detected)}`
+            : 'Detect language'
+          : langName(from)}
       </Label>
       <TextInput
         value={text}

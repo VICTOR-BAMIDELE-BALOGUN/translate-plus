@@ -1,7 +1,7 @@
 // Live Captions: rolling bilingual subtitles for whatever the phone hears —
 // a meeting, a lecture, or a WhatsApp / other app call played on speaker.
 import React, { useRef, useState } from 'react';
-import { FlatList, Modal, ScrollView, Text, TextInput, View } from 'react-native';
+import { FlatList, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
 import { Btn, Card, ErrorText, LangButton, styles } from '../components/ui';
@@ -11,6 +11,7 @@ import { translate } from '../services/translator';
 import { speak } from '../services/tts';
 import { useListener } from '../services/listen';
 import { langName } from '../languages';
+import { detect } from '../services/detect';
 import RecapSheet from '../components/RecapSheet';
 
 type Line = { id: string; original: string; translated: string; mine?: boolean };
@@ -30,6 +31,14 @@ export default function CaptionsScreen() {
   const list = useRef<FlatList<Line>>(null);
 
   const theirLang = s.targetLang;
+  // languages expected in this conversation; the one being listened for is theirLang
+  const expected = s.listenLanguages.length ? s.listenLanguages : [s.targetLang];
+  const [switched, setSwitched] = useState<string | null>(null);
+
+  const listenIn = (code: string) => {
+    updateSettings({ targetLang: code });
+    if (mic.listening) mic.start(code);
+  };
 
   const push = (line: Line) => setLines((prev) => [...prev, line].slice(-80));
 
@@ -49,6 +58,15 @@ export default function CaptionsScreen() {
     },
     onFinal: async (text) => {
       partialSeq.current++;
+      // if what was heard reads clearly as another expected language, follow it
+      if (expected.length > 1) {
+        const guess = detect(text, expected);
+        if (guess && guess !== theirLang) {
+          setSwitched(guess);
+          setTimeout(() => setSwitched(null), 4000);
+          listenIn(guess);
+        }
+      }
       setPartial({ original: '', translated: '' });
       const id = newId();
       push({ id, original: text, translated: '…' });
@@ -93,6 +111,47 @@ export default function CaptionsScreen() {
         <Btn kind="ghost" label="Use on calls" onPress={() => setHelp(true)} />
         {lines.length ? <Btn kind="ghost" label="Recap" onPress={() => setRecapOpen(true)} /> : null}
       </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+        <Text style={{ color: p.sub, fontSize: 12 }}>Listening for:</Text>
+        {expected.map((code) => (
+          <Pressable
+            key={code}
+            accessibilityRole="button"
+            accessibilityLabel={`Listen in ${langName(code)}`}
+            onPress={() => listenIn(code)}
+            onLongPress={() => updateSettings({ listenLanguages: expected.filter((c) => c !== code) })}
+            style={{
+              paddingVertical: 7,
+              paddingHorizontal: 12,
+              borderRadius: 999,
+              borderWidth: 1,
+              backgroundColor: code === theirLang ? p.accent : p.cardAlt,
+              borderColor: code === theirLang ? p.accent : p.line,
+            }}
+          >
+            <Text style={{ color: code === theirLang ? p.accentText : p.text, fontWeight: '700', fontSize: 13 }}>
+              {langName(code)}
+            </Text>
+          </Pressable>
+        ))}
+        <LangButton
+          code="auto"
+          allowAuto
+          style={{ flex: 0, minWidth: 70, paddingVertical: 7 }}
+          onChange={(code) => {
+            if (code === 'auto' || expected.includes(code)) return;
+            updateSettings({ listenLanguages: [...expected, code] });
+          }}
+        />
+      </View>
+      {expected.length > 1 ? (
+        <Text style={{ color: p.sub, fontSize: 11, marginBottom: 6, lineHeight: 16 }}>
+          A phone hears one language at a time. Tap a name to switch, hold to remove. It also switches by itself when what it heard is clearly one of the others.
+        </Text>
+      ) : null}
+      {switched ? (
+        <Text style={{ color: p.ok, fontSize: 12, marginBottom: 6 }}>Switched to {langName(switched)}</Text>
+      ) : null}
       <ErrorText>{error || mic.error}</ErrorText>
 
       <FlatList

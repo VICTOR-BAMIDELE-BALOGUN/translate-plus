@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, generateCode, isValidCode, formatCode, normalizeCode, buildInviteLink, parseInvite } from '../src/services/codec.ts';
+import { detect, rank, segmentByLanguage, languagesIn } from '../src/services/detect.ts';
 import italianPack from '../src/learn/italian.ts';
 import { extractDetails, buildRecap } from '../src/services/recap.ts';
 import { writtenInvite, hasWrittenInvite, withLink, ENGLISH_INVITE } from '../src/invitemessage.ts';
@@ -344,4 +345,61 @@ test('the bundled Italian course is complete and consistent', () => {
 
   assert.ok(italianPack.sounds.length >= 8);
   assert.ok(italianPack.notes.some((n) => /Lei and tu/i.test(n.title)), 'the formality note must be there');
+});
+
+test('language detection on the device', () => {
+  const cases = [
+    ['Buongiorno, vorrei sapere se l\'appartamento è ancora libero.', 'it'],
+    ['Good morning, I would like to know if the flat is still available.', 'en'],
+    ['Bonjour, je voudrais savoir si vous avez une chambre.', 'fr'],
+    ['Buenos días, quiero saber si hay una habitación para mí.', 'es'],
+    ['Guten Tag, ich möchte wissen, ob das Zimmer noch frei ist.', 'de'],
+    ['Bom dia, eu queria saber se o quarto ainda está livre.', 'pt'],
+    ['Goedendag, ik wil weten of de kamer nog vrij is.', 'nl'],
+    ['Habari, nina swali kwa ajili ya hii nyumba.', 'sw'],
+  ];
+  for (const [text, want] of cases) assert.equal(detect(text), want, `misread: ${text}`);
+
+  // other scripts need no word list at all
+  assert.equal(detect('Здравствуйте, как дела?'), 'ru');
+  assert.equal(detect('こんにちは、元気ですか'), 'ja');
+  assert.equal(detect('안녕하세요'), 'ko');
+  assert.equal(detect('مرحبا كيف حالك'), 'ar');
+  assert.equal(detect('Γειά σου'), 'el');
+
+  // too little to go on is reported as unknown rather than guessed
+  assert.equal(detect(''), null);
+  assert.equal(detect('...'), null);
+  assert.equal(detect('OK'), null);
+
+  // narrowing to the languages in play makes short text usable
+  assert.equal(detect('con una', ['it', 'en']), 'it');
+  assert.equal(rank('the and is', ['it', 'en'])[0].lang, 'en');
+});
+
+test('a conversation that switches language mid-way', () => {
+  const mixed =
+    'Buongiorno, le scrivo per l\'appartamento in via Roma. ' +
+    'I am an international student at the university here. ' +
+    'Vorrei sapere se è ancora libero e quanto costa al mese.';
+
+  const found = languagesIn(mixed);
+  assert.deepEqual(found.sort(), ['en', 'it'], `got ${found}`);
+
+  const segs = segmentByLanguage(mixed);
+  assert.equal(segs.length, 3);
+  assert.equal(segs[0].lang, 'it');
+  assert.equal(segs[1].lang, 'en');
+  assert.equal(segs[2].lang, 'it');
+  // nothing is lost in the split
+  assert.equal(segs.map((s) => s.text).join(' '), mixed.trim());
+
+  // neighbouring sentences in the same language are merged into one block
+  const twoItalian = segmentByLanguage('Buongiorno a tutti. Come sta oggi lei?');
+  assert.equal(twoItalian.length, 1);
+  assert.equal(twoItalian[0].lang, 'it');
+
+  // a single language stays a single block
+  assert.equal(languagesIn('Hello there. How are you today? I am fine.').length, 1);
+  assert.deepEqual(languagesIn(''), []);
 });

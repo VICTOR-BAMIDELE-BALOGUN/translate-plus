@@ -24,6 +24,7 @@ export type Settings = {
   theme: string; // a theme id from theme.ts
   followSystem: boolean;
   captionSize: number;
+  listenLanguages: string[]; // the languages expected in a conversation
   paneLayout: 'stacked' | 'side';
   brokerUrl: string;
   linkBase: string;
@@ -53,6 +54,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'midnight',
   followSystem: false,
   captionSize: 22,
+  listenLanguages: [],
   paneLayout: 'stacked',
   brokerUrl: DEFAULT_BROKER,
   linkBase: '',

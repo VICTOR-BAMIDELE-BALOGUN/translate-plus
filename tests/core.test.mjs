@@ -4,6 +4,9 @@ import { deriveRoom, seal, open, toBase64, fromBase64, utf8Encode, utf8Decode, g
 import { variantsFor, hasVariants, belongsTo, mergeVariants, localeFor } from '../src/services/accents.ts';
 import { detect, rank, segmentByLanguage, languagesIn } from '../src/services/detect.ts';
 import italianPack from '../src/learn/italian.ts';
+import { normalizeWords, scorePronunciation, verdict } from '../src/learn/score.ts';
+import { parseShareLink } from '../src/share.ts';
+import { newCard, addCard, isSaved, grade, dueCards, cardSides, BOX_DAYS } from '../src/learn/review.ts';
 import { extractDetails, buildRecap } from '../src/services/recap.ts';
 import { writtenInvite, hasWrittenInvite, withLink, ENGLISH_INVITE } from '../src/invitemessage.ts';
 import { detectRegister, steerSource, correctItalian, hasRegister, canCorrect } from '../src/services/register.ts';
@@ -527,4 +530,76 @@ test('sessions: archive, recap entries and titles', () => {
   assert.equal(entries[1].mine, true);
   const title = sessionTitle(s('c', 1), (c) => (c === 'it' ? 'Italian' : c), 'it');
   assert.match(title, /^Call · Italian · 19 Nov \d\d:05$/);
+});
+
+test('pronunciation: words are normalised for comparison', () => {
+  assert.deepEqual(normalizeWords("C'è un caffè, per favore?"), ['c', 'e', 'un', 'caffe', 'per', 'favore']);
+  assert.deepEqual(normalizeWords('  '), []);
+});
+
+test('pronunciation: exact, close, missing and extra words', () => {
+  const exact = scorePronunciation('Vorrei un caffè, per favore.', 'vorrei un caffè per favore');
+  assert.equal(exact.percent, 100);
+  assert.ok(exact.words.every((w) => w.mark === 'ok'));
+  assert.equal(exact.words[2].word, 'caffè,');
+
+  const close = scorePronunciation('Dove si trova la stazione?', 'dove si trova la stazioni');
+  assert.equal(close.words[4].mark, 'close');
+  assert.equal(close.percent, 90);
+
+  const missing = scorePronunciation('Mi scusi, non ho capito.', 'mi scusi capito');
+  assert.deepEqual(missing.words.map((w) => w.mark), ['ok', 'ok', 'missed', 'missed', 'ok']);
+
+  // extra words before and between do not throw the rest off
+  const extra = scorePronunciation('Buongiorno signora', 'ehm allora buongiorno cara signora');
+  assert.equal(extra.percent, 100);
+
+  // short words are not counted as near misses
+  assert.equal(scorePronunciation('ho', 'no').percent, 0);
+  assert.equal(scorePronunciation('Ciao', '').percent, 0);
+  assert.equal(verdict(95), 'Perfetto!');
+  assert.equal(verdict(10), 'Try again');
+});
+
+test('review: saving, de-duplication and which side is learnt', () => {
+  const now = 1_000_000;
+  let list = addCard([], newCard('a', 'Thank you', 'Grazie', 'it', now));
+  list = addCard(list, newCard('b', 'Thanks', ' grazie ', 'it', now));
+  assert.equal(list.length, 1);
+  assert.ok(isSaved(list, 'GRAZIE', 'it'));
+  assert.ok(!isSaved(list, 'Grazie', 'es'));
+
+  assert.deepEqual(cardSides('Where is it?', 'auto', 'Dove si trova?', 'it', 'en'), { front: 'Where is it?', back: 'Dove si trova?', lang: 'it' });
+  assert.deepEqual(cardSides('Dove si trova?', 'it', 'Where is it?', 'en', 'en'), { front: 'Where is it?', back: 'Dove si trova?', lang: 'it' });
+  assert.equal(cardSides('Hello', 'auto', 'Hello', 'en-GB', 'en'), null);
+  assert.equal(cardSides('', 'it', 'x', 'en', 'en'), null);
+});
+
+test('review: boxes climb when remembered and reset when forgotten', () => {
+  const day = 24 * 60 * 60 * 1000;
+  let card = newCard('a', 'Thank you', 'Grazie', 'it', 0);
+  assert.equal(dueCards([card], 0).length, 1);
+  card = grade(card, true, 0);
+  assert.equal(card.box, 1);
+  assert.equal(card.due, BOX_DAYS[1] * day);
+  assert.equal(dueCards([card], day - 1).length, 0);
+  for (let i = 0; i < 20; i++) card = grade(card, true, 0);
+  assert.equal(card.box, BOX_DAYS.length - 1);
+  card = grade(card, false, 5);
+  assert.equal(card.box, 0);
+  assert.ok(card.due > 5 && card.due < 5 + day);
+  assert.equal(card.seen, 22);
+
+  const a = { ...newCard('a', 'x', 'a', 'it', 0), due: 50 };
+  const b = { ...newCard('b', 'y', 'b', 'it', 0), due: 10 };
+  assert.deepEqual(dueCards([a, b], 100).map((c) => c.id), ['b', 'a']);
+});
+
+test('shared text: links from the selection menu and Share sheet', () => {
+  assert.equal(parseShareLink('translateplus://translate?text=Dove%20si%20trova%3F'), 'Dove si trova?');
+  assert.equal(parseShareLink('translateplus://translate?text=caff%C3%A8%20%26%20latte%0Asecond%20line'), 'caffè & latte\nsecond line');
+  assert.equal(parseShareLink('translateplus://translate?text=%20%20'), null);
+  assert.equal(parseShareLink('translateplus://translate?text=%E0%A4%A'), null); // broken encoding
+  assert.equal(parseShareLink('https://example.com/?text=hello'), null);
+  assert.equal(parseShareLink(null), null);
 });

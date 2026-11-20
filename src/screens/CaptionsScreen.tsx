@@ -14,6 +14,7 @@ import {
   deleteCaptionSession,
   finishCaptionSession,
   newId,
+  saveCard,
   updateCaptionLines,
   updateSettings,
   useStore,
@@ -66,6 +67,7 @@ export default function CaptionsScreen() {
   const [speakingNow, setSpeakingNow] = useState(isSpeaking());
   const [busy, setBusy] = useState(false);
   const [warm, setWarm] = useState<Warm>(null);
+  const [savedLine, setSavedLine] = useState<{ id: string; ok: boolean } | null>(null);
   const lastSaid = useRef<{ text: string; lang: string } | null>(null);
   const input = useRef<React.ComponentRef<typeof TextInput>>(null);
 
@@ -368,12 +370,28 @@ export default function CaptionsScreen() {
           </Text>
         }
         renderItem={({ item }) => (
-          <View style={{ marginBottom: 14, alignItems: item.mine ? 'flex-end' : 'flex-start' }}>
+          <Pressable
+            accessibilityHint="Hold to save this line for review in Learn"
+            delayLongPress={450}
+            onLongPress={() => {
+              const ok = item.mine
+                ? saveCard(item.original, s.myLang, item.translated, theirLang)
+                : saveCard(item.original, theirLang, item.translated, s.myLang);
+              setSavedLine({ id: item.id, ok });
+              setTimeout(() => setSavedLine((v) => (v?.id === item.id ? null : v)), 1800);
+            }}
+            style={{ marginBottom: 14, alignItems: item.mine ? 'flex-end' : 'flex-start' }}
+          >
             <Text style={{ color: item.mine ? p.accent : p.text, fontSize: s.captionSize, lineHeight: s.captionSize * 1.3, fontWeight: '600' }}>
               {item.mine ? item.original : item.translated}
             </Text>
             {s.showOriginal ? <Text style={{ color: p.sub, fontSize: 14, marginTop: 2 }}>{item.mine ? item.translated : item.original}</Text> : null}
-          </View>
+            {savedLine?.id === item.id ? (
+              <Text style={{ color: savedLine.ok ? p.ok : p.sub, fontSize: 12, marginTop: 2 }}>
+                {savedLine.ok ? '★ Saved to Learn → Review' : 'Already saved, or nothing to learn in it'}
+              </Text>
+            ) : null}
+          </Pressable>
         )}
         ListFooterComponent={
           partial.original ? (

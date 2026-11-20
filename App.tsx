@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, BackHandler, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Linking, Platform, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
@@ -17,6 +17,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import GuestScreen from './src/screens/GuestScreen';
 import { currentInvite, type Invite } from './src/invite';
 import { InstallBanner } from './src/components/InstallPrompt';
+import { parseShareLink } from './src/share';
 
 // secure randomness for encryption nonces and invite codes
 nacl.setPRNG((x, n) => {
@@ -41,9 +42,25 @@ function Shell() {
   const [tab, setTab] = useState<Tab>('translate');
   const [room, setRoom] = useState<Room | null>(null);
   const [invite] = useState<Invite | null>(() => currentInvite());
+  // text selected or shared in another app ("Translate+" in its menu)
+  const [shared, setShared] = useState<{ text: string; n: number } | null>(null);
 
   useEffect(() => {
     loadStore();
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const take = (url: string | null | undefined) => {
+      const text = parseShareLink(url);
+      if (!text) return;
+      setRoom(null);
+      setTab('translate');
+      setShared((v) => ({ text, n: (v?.n ?? 0) + 1 }));
+    };
+    Linking.getInitialURL().then(take).catch(() => {});
+    const sub = Linking.addEventListener('url', (e) => take(e.url));
+    return () => sub.remove();
   }, []);
 
   // on the web the page itself sits behind the app: keep it, and the browser's own
@@ -104,7 +121,7 @@ function Shell() {
             <Text style={{ color: p.sub, fontSize: 13, marginLeft: 10 }}>{TABS.find((t) => t.id === tab)?.label}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            {tab === 'translate' ? <TranslateScreen /> : null}
+            {tab === 'translate' ? <TranslateScreen shared={shared} /> : null}
             {tab === 'talk' ? <TalkScreen /> : null}
             {tab === 'captions' ? <CaptionsScreen /> : null}
             {tab === 'image' ? <ImageScreen /> : null}

@@ -1,19 +1,31 @@
 // Preloaded course material. Everything here ships with the app and works offline.
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Btn, Card, Choice, Label, styles } from '../components/ui';
 import { usePalette } from '../theme';
-import { useSettings } from '../store';
+import { deleteCard, gradeCard, toggleCard, useStore } from '../store';
 import { speak, stopSpeaking } from '../services/tts';
+import { useListener } from '../services/listen';
 import { availablePacks, packFor, searchPack, type Phrase } from '../learn';
+import { dueCards, isSaved, type Card as SavedCard } from '../learn/review';
+import { scorePronunciation, verdict, type Score } from '../learn/score';
 import { langName } from '../languages';
 
-type Section = 'phrases' | 'sounds' | 'notes' | 'resources';
+type Section = 'phrases' | 'review' | 'sounds' | 'notes' | 'resources';
+
+function when(ms: number): string {
+  const mins = Math.round((ms - Date.now()) / 60000);
+  if (mins < 60) return mins <= 1 ? 'in a minute' : `in ${mins} minutes`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `in ${hours} hour${hours === 1 ? '' : 's'}`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? 'tomorrow' : `in ${days} days`;
+}
 
 export default function LearnScreen() {
   const p = usePalette();
-  const s = useSettings();
+  const { settings: s, cards } = useStore();
   const packs = availablePacks();
   // the language being learnt is normally the one being translated into
   const [lang, setLang] = useState(() => (packFor(s.targetLang) ? s.targetLang : packs[0]?.lang) ?? 'it');
@@ -24,8 +36,68 @@ export default function LearnScreen() {
   const [hide, setHide] = useState(false); // practice: cover the Italian
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState('');
+  const [practiceOpen, setPracticeOpen] = useState<string | null>(null);
 
   const hits = useMemo(() => (pack ? searchPack(pack, query) : []), [pack, query]);
+
+  // ---- pronunciation check: one listener for the whole screen ----
+  const [practising, setPractising] = useState<{ key: string; text: string } | null>(null);
+  const [heard, setHeard] = useState('');
+  const [scores, setScores] = useState<Record<string, Score>>({});
+  const target = useRef<{ key: string; text: string } | null>(null);
+  const giveUp = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mic = useListener({
+    onPartial: (t) => setHeard(t),
+    onFinal: (t) => {
+      const want = target.current;
+      if (!want) return;
+      setScores((all) => ({ ...all, [want.key]: scorePronunciation(want.text, t) }));
+      finishPractice();
+    },
+  });
+  const finishPractice = () => {
+    if (giveUp.current) clearTimeout(giveUp.current);
+    target.current = null;
+    setPractising(null);
+    setHeard('');
+    mic.stop();
+  };
+  const practise = async (key: string, text: string, lang: string) => {
+    if (practising?.key === key) return finishPractice();
+    stopSpeaking();
+    target.current = { key, text };
+    setPractising({ key, text });
+    setHeard('');
+    setScores((all) => {
+      const rest = { ...all };
+      delete rest[key];
+      return rest;
+    });
+    const ok = await mic.start(lang);
+    if (!ok) return finishPractice();
+    if (giveUp.current) clearTimeout(giveUp.current);
+    giveUp.current = setTimeout(finishPractice, 12000);
+  };
+  useEffect(
+    () => () => {
+      if (giveUp.current) clearTimeout(giveUp.current);
+    },
+    []
+  );
+
+  // ---- review ----
+  const [now, setNow] = useState(() => Date.now());
+  const [showAnswer, setShowAnswer] = useState(false);
+  useEffect(() => {
+    if (section !== 'review') return;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, [section]);
+  const mine = cards.filter((c) => !pack || c.lang.split('-')[0] === pack.lang);
+  const due = dueCards(mine, now);
+  const current: SavedCard | undefined = due[0];
+  const nextDue = mine.length ? Math.min(...mine.map((c) => c.due)) : 0;
 
   if (!pack) {
     return (
@@ -46,8 +118,50 @@ export default function LearnScreen() {
     setTimeout(() => setCopied(''), 1200);
   };
 
+  const sayIt = (key: string, text: string, lang: string) => {
+    const on = practising?.key === key;
+    const score = scores[key];
+    return (
+      <View style={{ marginTop: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Btn small kind={on ? 'warm' : 'ghost'} label={on ? 'Listening… tap to stop' : '🎤 Say it'} onPress={() => practise(key, text, lang)} />
+          {score ? (
+            <Text style={{ color: score.percent >= 70 ? p.ok : score.percent >= 40 ? p.warm : p.danger, fontSize: 13, fontWeight: '800' }}>
+              {score.percent}% · {verdict(score.percent)}
+            </Text>
+          ) : null}
+        </View>
+        {on && heard ? <Text style={{ color: p.sub, fontSize: 13, marginTop: 4 }}>{heard}</Text> : null}
+        {mic.error ? <Text style={{ color: p.danger, fontSize: 12, marginTop: 4 }}>{mic.error}</Text> : null}
+        {score && !on ? (
+          <View style={{ marginTop: 4 }}>
+            <Text style={{ fontSize: 16, lineHeight: 23 }}>
+              {score.words.map((w, i) => (
+                <Text
+                  key={i}
+                  style={{
+                    color: w.mark === 'ok' ? p.ok : w.mark === 'close' ? p.warm : p.danger,
+                    fontWeight: '700',
+                    textDecorationLine: w.mark === 'missed' ? 'underline' : 'none',
+                  }}
+                >
+                  {w.word}{' '}
+                </Text>
+              ))}
+            </Text>
+            <Text style={{ color: p.sub, fontSize: 12, marginTop: 2 }}>
+              {score.heard ? `Heard: "${score.heard}". ` : 'Nothing was heard. '}Green is right, orange nearly, red missed.
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  };
+
   const renderPhrase = (phrase: Phrase, key: string) => {
     const covered = hide && !revealed[key];
+    const saved = isSaved(cards, phrase.it, pack.lang);
+    const expanded = practiceOpen === key || practising?.key === key || !!scores[key];
     return (
       <Pressable
         key={key}
@@ -64,11 +178,28 @@ export default function LearnScreen() {
           {phrase.formal ? (
             <Text style={{ color: p.warm, fontSize: 10, fontWeight: '800' }}>LEI</Text>
           ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={saved ? 'Remove from my phrases' : 'Save to my phrases'}
+            hitSlop={10}
+            onPress={() => toggleCard(phrase.en, phrase.it, pack.lang)}
+          >
+            <Text style={{ color: saved ? p.warm : p.sub, fontSize: 18 }}>{saved ? '★' : '☆'}</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Practise saying it"
+            hitSlop={10}
+            onPress={() => setPracticeOpen(practiceOpen === key ? null : key)}
+          >
+            <Text style={{ fontSize: 15 }}>🎤</Text>
+          </Pressable>
           <Text style={{ color: p.accent, fontSize: 15 }}>▶</Text>
         </View>
         <Text style={{ color: p.sub, fontSize: 14, marginTop: 2 }}>{phrase.en}</Text>
         {!covered ? <Text style={{ color: p.sub, fontSize: 12, marginTop: 1, fontStyle: 'italic' }}>{phrase.say}</Text> : null}
         {copied === phrase.it ? <Text style={{ color: p.ok, fontSize: 11, marginTop: 2 }}>Copied</Text> : null}
+        {!covered && expanded ? sayIt(key, phrase.it, pack.lang) : null}
       </Pressable>
     );
   };
@@ -89,6 +220,7 @@ export default function LearnScreen() {
         onChange={(v) => setSection(v)}
         options={[
           { value: 'phrases', label: 'Phrases' },
+          { value: 'review', label: due.length ? `Review · ${due.length}` : 'Review' },
           { value: 'sounds', label: 'Sounds' },
           { value: 'notes', label: 'Notes' },
           { value: 'resources', label: 'Free courses' },
@@ -116,7 +248,7 @@ export default function LearnScreen() {
               }}
             />
             <Text style={{ color: p.sub, fontSize: 12, flex: 1 }}>
-              {hide ? 'Read the English, then tap to check yourself.' : 'Tap a phrase to hear it, hold to copy.'}
+              {hide ? 'Read the English, then tap to check yourself.' : 'Tap to hear it, 🎤 to practise saying it, ☆ to save it for review, hold to copy.'}
             </Text>
           </View>
 
@@ -151,6 +283,105 @@ export default function LearnScreen() {
               );
             })
           )}
+        </>
+      ) : null}
+
+      {section === 'review' ? (
+        <>
+          {current ? (
+            <Card>
+              <Label>{due.length} to review</Label>
+              <Text style={{ color: p.text, fontSize: 19, fontWeight: '700', marginTop: 4 }}>{current.front}</Text>
+              <Text style={{ color: p.sub, fontSize: 13, marginTop: 4 }}>Say it in {langName(current.lang)}, then check.</Text>
+              {showAnswer ? (
+                <>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      stopSpeaking();
+                      speak(current.back, current.lang, { native: true });
+                    }}
+                    style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                  >
+                    <Text style={{ color: p.accent, fontSize: 20, fontWeight: '800', flex: 1 }}>{current.back}</Text>
+                    <Text style={{ color: p.accent, fontSize: 15 }}>▶</Text>
+                  </Pressable>
+                  {sayIt(`card-${current.id}`, current.back, current.lang)}
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+                    <Btn
+                      kind="ghost"
+                      label="Forgot"
+                      style={{ flex: 1 }}
+                      onPress={() => {
+                        finishPractice();
+                        gradeCard(current.id, false);
+                        setShowAnswer(false);
+                      }}
+                    />
+                    <Btn
+                      label="Remembered"
+                      style={{ flex: 1 }}
+                      onPress={() => {
+                        finishPractice();
+                        gradeCard(current.id, true);
+                        setShowAnswer(false);
+                      }}
+                    />
+                  </View>
+                </>
+              ) : (
+                <Btn
+                  label="Show answer"
+                  style={{ marginTop: 14 }}
+                  onPress={() => {
+                    setShowAnswer(true);
+                    stopSpeaking();
+                    speak(current.back, current.lang, { native: true });
+                  }}
+                />
+              )}
+            </Card>
+          ) : (
+            <Card>
+              <Label>Review</Label>
+              <Text style={{ color: p.text, fontSize: 15, lineHeight: 22 }}>
+                {mine.length ? `All done for now. The next phrase comes back ${when(nextDue)}.` : 'Nothing saved yet.'}
+              </Text>
+              <Text style={{ color: p.sub, fontSize: 13, lineHeight: 20, marginTop: 6 }}>
+                Save phrases with ☆ in the phrasebook, with Save in the Translate tab, or by holding a line in Captions.
+                Each one comes back a day later, then after 3, 7, 14, 30 and 90 days while you keep remembering it, and
+                sooner when you forget it.
+              </Text>
+            </Card>
+          )}
+
+          {mine.length ? (
+            <Card>
+              <Label>My phrases · {mine.length}</Label>
+              {mine.map((c) => (
+                <View
+                  key={c.id}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: 1, borderColor: p.line }}
+                >
+                  <Pressable
+                    style={{ flex: 1 }}
+                    accessibilityRole="button"
+                    onPress={() => {
+                      stopSpeaking();
+                      speak(c.back, c.lang, { native: true });
+                    }}
+                  >
+                    <Text style={{ color: p.text, fontSize: 15, fontWeight: '700' }}>{c.back}</Text>
+                    <Text style={{ color: p.sub, fontSize: 13 }}>{c.front}</Text>
+                    <Text style={{ color: p.sub, fontSize: 11, marginTop: 2 }}>
+                      {c.due <= now ? 'Due now' : `Next ${when(c.due)}`} · step {c.box} of 6
+                    </Text>
+                  </Pressable>
+                  <Btn small kind="ghost" label="Remove" onPress={() => deleteCard(c.id)} />
+                </View>
+              ))}
+            </Card>
+          ) : null}
         </>
       ) : null}
 

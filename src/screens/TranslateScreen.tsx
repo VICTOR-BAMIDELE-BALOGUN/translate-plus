@@ -3,19 +3,24 @@ import { Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } fro
 import * as Clipboard from 'expo-clipboard';
 import { Btn, Card, Choice, ErrorText, Label, LangButton, styles } from '../components/ui';
 import { usePalette } from '../theme';
-import { addHistory, updateSettings, useStore } from '../store';
+import { addHistory, saveCard, updateSettings, useStore } from '../store';
+import { isSaved } from '../learn/review';
 import { translate } from '../services/translator';
 import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import { langName } from '../languages';
 import { hasRegister, type Detected } from '../services/register';
+import { detect } from '../services/detect';
 
-export default function TranslateScreen() {
+export default function TranslateScreen({ shared }: { shared?: { text: string; n: number } | null }) {
   const p = usePalette();
-  const { settings, history } = useStore();
+  const { settings, history, cards } = useStore();
   const { width } = useWindowDimensions();
   const [from, setFrom] = useState('auto');
-  const to = settings.targetLang;
+  // text shared from another app that is already in the target language is translated
+  // into my own language instead, without changing the target for everything else
+  const [sharedTo, setSharedTo] = useState<string | null>(null);
+  const to = sharedTo ?? settings.targetLang;
   const [text, setText] = useState('');
   const [result, setResult] = useState('');
   const [detected, setDetected] = useState<string | undefined>();
@@ -26,9 +31,28 @@ export default function TranslateScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [saveNote, setSaveNote] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const seq = useRef(0);
   const base = useRef('');
+
+  // text sent from another app: translate it straight away (n changes for each new share)
+  const sharedN = useRef(0);
+  useEffect(() => {
+    if (!shared || shared.n === sharedN.current) return;
+    sharedN.current = shared.n;
+    const lang = (c: string) => c.split('-')[0];
+    const guess = detect(shared.text, [settings.targetLang, settings.myLang]);
+    if (guess && lang(guess) === lang(settings.targetLang) && lang(settings.myLang) !== lang(settings.targetLang)) {
+      setFrom(settings.targetLang);
+      setSharedTo(settings.myLang);
+    } else {
+      setFrom('auto');
+      setSharedTo(null);
+    }
+    base.current = shared.text;
+    setText(shared.text);
+  }, [shared]);
 
   // side by side needs room; on a narrow phone it falls back to stacked
   const sideBySide = settings.paneLayout === 'side' && width >= 520;
@@ -78,6 +102,7 @@ export default function TranslateScreen() {
   const swap = () => {
     const newTo = from === 'auto' ? detected ?? settings.myLang : from;
     setFrom(to);
+    setSharedTo(null);
     updateSettings({ targetLang: newTo });
     if (result) {
       setText(result);
@@ -92,6 +117,7 @@ export default function TranslateScreen() {
   };
 
   const clearAll = () => {
+    setSharedTo(null);
     save();
     setText('');
     base.current = '';
@@ -155,7 +181,20 @@ export default function TranslateScreen() {
             setTimeout(() => setCopied(false), 1500);
           }}
         />
+        <Btn
+          small
+          kind="ghost"
+          label={result && (isSaved(cards, result, to) || isSaved(cards, text, detected || from)) ? '★ Saved' : '☆ Save'}
+          disabled={!result || busy}
+          onPress={() => {
+            const ok = saveCard(text, from === 'auto' ? detected || 'auto' : from, result, to);
+            save();
+            setSaveNote(ok ? 'Saved to Learn → Review.' : 'Already saved, or both sides are in your own language.');
+            setTimeout(() => setSaveNote(null), 2500);
+          }}
+        />
       </View>
+      {saveNote ? <Text style={{ color: p.sub, fontSize: 12, marginTop: 6 }}>{saveNote}</Text> : null}
     </Card>
   );
 
@@ -164,7 +203,11 @@ export default function TranslateScreen() {
       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 8 }}>
         <LangButton caption="From" code={from} onChange={setFrom} allowAuto />
         <Btn small kind="ghost" label="⇄" onPress={swap} />
-        <LangButton caption="To" code={to} onChange={(c) => updateSettings({ targetLang: c })} />
+        <LangButton caption="To" code={to} onChange={(c) => {
+            setSharedTo(null);
+            updateSettings({ targetLang: c });
+          }}
+        />
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>

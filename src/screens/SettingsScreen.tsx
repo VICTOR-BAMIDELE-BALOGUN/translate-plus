@@ -13,6 +13,7 @@ import { langName } from '../languages';
 import { buildInviteLink, defaultLinkBase } from '../invite';
 import { IOS_STEPS, runInstall, useInstallState } from '../components/InstallPrompt';
 import AccentCard from '../components/AccentCard';
+import LanguageCheck from '../components/LanguageCheck';
 
 const SAMPLE_TEXT =
   'Hello, this is my voice. I am recording a short sample so that my translations can sound like me. ' +
@@ -329,6 +330,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
+      <LanguageCheck />
       <Card>
         <Label>Profile</Label>
         <TextInput

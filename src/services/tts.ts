@@ -1,6 +1,6 @@
 // Speech output. One queue so phrases never overlap. Cloned voice or Google's natural voice,
 // with automatic fallback to the phone's built-in voice if they fail or there is no internet.
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as Speech from 'expo-speech';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
@@ -267,4 +267,22 @@ export function stopSpeaking() {
   try {
     currentPlayer?.pause();
   } catch {}
+}
+
+/**
+ * Whether the phone has its own voice for a language (used offline, and by "Phone voice").
+ * null where it cannot be told (web, iOS). Asks the engine afresh, so a voice installed a
+ * moment ago is seen.
+ */
+export async function hasPhoneVoice(lang: string): Promise<boolean | null> {
+  if (Platform.OS !== 'android') return null;
+  voicesPromise = null;
+  const voices = await deviceVoices();
+  if (!voices.length) return null;
+  return !!(await voiceFor(speechLocaleFor(lang, getSettings().accents)));
+}
+
+/** Opens Android's text-to-speech settings, where voices are downloaded. */
+export function openVoiceSettings(): Promise<void> {
+  return Linking.sendIntent('com.android.settings.TTS_SETTINGS').catch(() => Linking.openSettings());
 }

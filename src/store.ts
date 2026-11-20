@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSyncExternalStore } from 'react';
 import { archiveSession, MAX_SESSION_LINES, type CaptionLine, type CaptionSession, type QuickPhrase } from './services/phonecall';
+import { addCard, cardSides, grade, isSaved, newCard, type Card } from './learn/review';
 
 export type ClonedVoice = { id: string; title: string };
 export type Settings = {
@@ -85,13 +86,14 @@ type State = {
   messages: Record<string, ChatMessage[]>;
   captionLive: CaptionSession | null; // the Captions conversation in progress (survives tab switches)
   captionSessions: CaptionSession[]; // finished ones, newest first
+  cards: Card[]; // saved phrases for review, newest first
 };
 
 const KEY = 'translateplus.state.v1';
 const MAX_HISTORY = 50;
 const MAX_MESSAGES = 200;
 
-let state: State = { ready: false, deviceId: '', settings: DEFAULT_SETTINGS, history: [], rooms: [], messages: {}, captionLive: null, captionSessions: [] };
+let state: State = { ready: false, deviceId: '', settings: DEFAULT_SETTINGS, history: [], rooms: [], messages: {}, captionLive: null, captionSessions: [], cards: [] };
 const listeners = new Set<() => void>();
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -200,7 +202,7 @@ export function patchMessage(code: string, id: string, patch: Partial<ChatMessag
 }
 
 export function resetAll() {
-  set({ settings: DEFAULT_SETTINGS, history: [], rooms: [], messages: {}, captionLive: null, captionSessions: [] });
+  set({ settings: DEFAULT_SETTINGS, history: [], rooms: [], messages: {}, captionLive: null, captionSessions: [], cards: [] });
 }
 
 // ---------- Captions sessions ----------
@@ -228,4 +230,30 @@ export function finishCaptionSession(): CaptionSession | null {
 
 export function deleteCaptionSession(id: string) {
   set({ captionSessions: state.captionSessions.filter((s) => s.id !== id) });
+}
+
+// ---------- Saved phrases ----------
+
+/** Saves a translation for review; returns false when there is nothing to learn or it is already saved. */
+export function saveCard(original: string, originalLang: string, translated: string, translatedLang: string): boolean {
+  const sides = cardSides(original, originalLang, translated, translatedLang, state.settings.myLang);
+  if (!sides || isSaved(state.cards, sides.back, sides.lang)) return false;
+  set({ cards: addCard(state.cards, newCard(newId(), sides.front, sides.back, sides.lang, Date.now())) });
+  return true;
+}
+
+/** Saves a phrase whose sides are already known (the phrasebook). Saving it again removes it. */
+export function toggleCard(front: string, back: string, lang: string) {
+  if (isSaved(state.cards, back, lang)) {
+    const key = back.trim().toLowerCase();
+    set({ cards: state.cards.filter((c) => !(c.back.toLowerCase() === key && c.lang === lang)) });
+  } else set({ cards: addCard(state.cards, newCard(newId(), front, back, lang, Date.now())) });
+}
+
+export function gradeCard(id: string, remembered: boolean) {
+  set({ cards: state.cards.map((c) => (c.id === id ? grade(c, remembered, Date.now()) : c)) });
+}
+
+export function deleteCard(id: string) {
+  set({ cards: state.cards.filter((c) => c.id !== id) });
 }

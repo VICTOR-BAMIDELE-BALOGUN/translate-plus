@@ -11,7 +11,8 @@ export type Settings = {
   showOriginal: boolean;
   autoSpeak: boolean;
   speechRate: number;
-  voiceMode: 'system' | 'clone';
+  voiceMode: 'natural' | 'system' | 'clone';
+  voicePicked: boolean; // the user chose voiceMode themselves (before 'natural' existed, 'system' was just the default)
   voices: ClonedVoice[]; // max 3 slots
   activeVoiceId: string | null;
   fishModel: string;
@@ -44,7 +45,8 @@ export const DEFAULT_SETTINGS: Settings = {
   showOriginal: true,
   autoSpeak: true,
   speechRate: 1.0,
-  voiceMode: 'system',
+  voiceMode: 'natural',
+  voicePicked: false,
   voices: [],
   activeVoiceId: null,
   fishModel: 's2.1-pro-free',
@@ -128,6 +130,10 @@ export async function loadStore(): Promise<void> {
     }
   } catch {
     // corrupted storage: start clean rather than crash
+  }
+  // 'system' was the only default before the native-speaker voice existed: move those users over
+  if (state.settings.voiceMode === 'system' && !state.settings.voicePicked) {
+    state = { ...state, settings: { ...state.settings, voiceMode: 'natural' } };
   }
   // settings saved before themes had names: 'system' meant follow the phone
   const saved = state.settings.theme;

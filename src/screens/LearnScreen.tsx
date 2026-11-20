@@ -37,7 +37,7 @@ export default function LearnScreen() {
 
   const say = (phrase: Phrase) => {
     stopSpeaking();
-    speak(phrase.it, pack.lang);
+    speak(phrase.it, pack.lang, { native: true }); // a cloned voice keeps its owner's accent
   };
 
   const copy = async (phrase: Phrase) => {

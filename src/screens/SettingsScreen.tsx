@@ -109,7 +109,7 @@ function VoiceClone() {
           }
           const voices = s.voices.filter((v) => v.id !== id);
           const active = s.activeVoiceId === id ? voices[0]?.id ?? null : s.activeVoiceId;
-          updateSettings({ voices, activeVoiceId: active, voiceMode: active ? s.voiceMode : 'system' });
+          updateSettings({ voices, activeVoiceId: active, voiceMode: active ? s.voiceMode : 'natural' });
         },
       },
     ]);
@@ -131,12 +131,12 @@ function VoiceClone() {
             setError('Create a cloned voice below first.');
             return;
           }
-          updateSettings({ voiceMode: v });
+          updateSettings({ voiceMode: v, voicePicked: true });
         }}
-        options={[{ value: 'system', label: 'Phone voice (fastest)' }, { value: 'clone', label: 'My cloned voice' }]}
+        options={[{ value: 'natural', label: 'Native speaker' }, { value: 'system', label: 'Phone voice' }, { value: 'clone', label: 'My cloned voice' }]}
       />
       <Text style={{ color: p.sub, fontSize: 12, marginTop: 8 }}>
-        The cloned voice is made online by Fish Audio, so each phrase takes a moment longer than the phone voice. If it fails, the phone voice is used automatically.
+        Native speaker uses Google's online voice, so every language sounds like someone from there, whatever voices this phone has. The cloned voice is made online by Fish Audio and keeps your own accent. Both take a moment longer than the phone voice, and without internet the phone voice is used automatically.
       </Text>
 
       <View style={{ height: 14 }} />

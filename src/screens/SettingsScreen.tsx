@@ -475,7 +475,7 @@ export default function SettingsScreen() {
           style={[styles.input, { color: p.text, borderColor: p.line, backgroundColor: p.bg, fontSize: 13 }]}
         />
         <Text style={{ color: p.sub, fontSize: 12, marginVertical: 6, lineHeight: 18 }}>
-          Where your copy of the web app is published. Invite then shares a link the other person opens in their browser — no app to install. The web version fills this in by itself; the installed Android app needs it typed once.
+          Where your copy of the web app is published. Invite then shares a link the other person opens in their browser — no app to install. Leave it empty to use the published copy at victor-bamidele-balogun.github.io/translate-plus; the web version uses its own address.
         </Text>
         {s.linkBase || defaultLinkBase() ? (
           <Text selectable style={{ color: p.sub, fontSize: 11, marginBottom: 6 }} numberOfLines={2}>

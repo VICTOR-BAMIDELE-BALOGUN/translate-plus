@@ -230,8 +230,19 @@ async function googleSpeak(text: string, lang: string, gen: number): Promise<boo
   }
 }
 
-/** `native: true` always uses a native speaker's voice for the language, never the cloned one (e.g. for pronunciation practice). */
-export function speak(text: string, lang: string, opts: { native?: boolean } = {}): Promise<void> {
+/** A phone voice for the language, from the list already fetched (no fresh lookup, so no delay). */
+async function quickPhoneVoice(lang: string): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  return !!(await voiceFor(speechLocaleFor(lang, getSettings().accents)));
+}
+
+/**
+ * Speaks text in a language. `native: true` always uses a native speaker's voice, never the
+ * cloned one (pronunciation practice). `fast: true` is for calls: when the native-speaker voice
+ * is chosen and the phone has its own voice for the language, that one is used, because it
+ * starts at once instead of being fetched first.
+ */
+export function speak(text: string, lang: string, opts: { native?: boolean; fast?: boolean } = {}): Promise<void> {
   const clean = text.trim();
   if (!clean) return Promise.resolve();
   const gen = generation;
@@ -244,7 +255,8 @@ export function speak(text: string, lang: string, opts: { native?: boolean } = {
       const s = getSettings();
       const useClone = !opts.native && s.voiceMode === 'clone' && !!s.activeVoiceId;
       let ok = useClone ? await cloneSpeak(clean, s.activeVoiceId as string) : false;
-      if (!ok && gen === generation && (opts.native || s.voiceMode === 'natural')) ok = await googleSpeak(clean, lang, gen);
+      const quick = !useClone && opts.fast && s.fastCallVoice && !opts.native && (await quickPhoneVoice(lang));
+      if (!ok && !quick && gen === generation && (opts.native || s.voiceMode === 'natural')) ok = await googleSpeak(clean, lang, gen);
       if (!ok && gen === generation) await systemSpeak(clean, lang);
     })
     .catch(() => {})

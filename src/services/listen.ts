@@ -6,6 +6,7 @@ import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { getSettings } from '../store';
 import { speechLocaleFor } from '../languages';
 import { isSpeaking, onSpeakingChange } from './tts';
+import { unsent, words, worthSending } from './commit';
 
 type Options = {
   onPartial?: (text: string) => void;
@@ -13,7 +14,21 @@ type Options = {
   // force the half-duplex pause on, whatever the setting says (phone-call mode needs it:
   // the translated voice plays on speaker right next to the microphone)
   halfDuplex?: boolean;
+  // send what has been said so far once the speaker pauses this long (ms), instead of
+  // waiting for the end of the sentence; the rest follows as its own piece
+  commitAfter?: number;
 };
+
+/** Microphone clean-up from the settings; only the patched Android module has it. */
+function applyAudioProcessing() {
+  if (Platform.OS !== 'android') return;
+  try {
+    const s = getSettings();
+    (ExpoSpeechRecognitionModule as any).setAudioProcessing?.(s.noiseReduction, s.micBoost);
+  } catch {
+    // an older build without the patch: recognise without it
+  }
+}
 
 const BENIGN = new Set(['no-speech', 'aborted', 'speech-timeout']);
 
@@ -36,12 +51,22 @@ export function useListener(options: Options) {
   const failures = useRef(0);
   const running = useRef(false);
   const restartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // early sending: words of the current utterance already sent, and the pause timer
+  const sentWords = useRef(0);
+  const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearPause = () => {
+    if (pauseTimer.current) clearTimeout(pauseTimer.current);
+    pauseTimer.current = null;
+  };
 
   const begin = useCallback(() => {
     if (!want.current || running.current) return;
     if ((opts.current.halfDuplex || getSettings().pauseMicWhileSpeaking) && isSpeaking()) return;
     try {
       running.current = true;
+      sentWords.current = 0;
+      clearPause();
+      applyAudioProcessing();
       ExpoSpeechRecognitionModule.start({
         lang: speechLocaleFor(lang.current, getSettings().accents),
         interimResults: true,
@@ -77,11 +102,33 @@ export function useListener(options: Options) {
         const text = event.results?.[0]?.transcript ?? '';
         if (!text) return;
         failures.current = 0;
-        if (event.isFinal) opts.current.onFinal(text);
-        else opts.current.onPartial?.(text);
+        const commitAfter = opts.current.commitAfter;
+        if (!commitAfter) {
+          if (event.isFinal) opts.current.onFinal(text);
+          else opts.current.onPartial?.(text);
+          return;
+        }
+        clearPause();
+        const rest = unsent(text, sentWords.current);
+        if (event.isFinal) {
+          sentWords.current = 0;
+          if (rest) opts.current.onFinal(rest);
+          else opts.current.onPartial?.('');
+          return;
+        }
+        opts.current.onPartial?.(rest);
+        // nothing new for a moment: the speaker has paused, so send what they said
+        pauseTimer.current = setTimeout(() => {
+          pauseTimer.current = null;
+          if (!worthSending(rest)) return;
+          sentWords.current += words(rest).length;
+          opts.current.onPartial?.('');
+          opts.current.onFinal(rest);
+        }, commitAfter);
       }),
       ExpoSpeechRecognitionModule.addListener('end', () => {
         running.current = false;
+        clearPause();
         if (want.current) scheduleRestart(0);
       }),
       ExpoSpeechRecognitionModule.addListener('error', (event) => {
@@ -112,6 +159,7 @@ export function useListener(options: Options) {
     return () => {
       subs.forEach((s) => s.remove());
       offSpeak();
+      clearPause();
       want.current = false;
       if (restartTimer.current) clearTimeout(restartTimer.current);
       try {
@@ -149,6 +197,7 @@ export function useListener(options: Options) {
 
   const stop = useCallback(() => {
     want.current = false;
+    clearPause();
     setListening(false);
     if (restartTimer.current) clearTimeout(restartTimer.current);
     try {

@@ -381,7 +381,11 @@ export default function SettingsScreen() {
         <Label>Speech</Label>
         <ToggleRow title="Speak translations aloud" hint="Face to Face mode" value={s.autoSpeak} onChange={(v) => updateSettings({ autoSpeak: v })} />
         <ToggleRow title="Pause mic while the app speaks" hint="Prevents the app hearing itself. Turn off only with headphones." value={s.pauseMicWhileSpeaking} onChange={(v) => updateSettings({ pauseMicWhileSpeaking: v })} />
-        <ToggleRow title="On-device speech recognition" hint="Faster and works offline on Android 13+, for languages downloaded on the phone" value={s.onDeviceRecognition} onChange={(v) => updateSettings({ onDeviceRecognition: v })} />
+        <ToggleRow title="On-device speech recognition" hint="Faster and works offline on Android 13+, for languages downloaded on the phone. Online recognition is usually more accurate." value={s.onDeviceRecognition} onChange={(v) => updateSettings({ onDeviceRecognition: v })} />
+        <ToggleRow title="Boost quiet voices" hint="Raises soft or distant speech up to 8× before it is recognised (Android 13+)" value={s.micBoost} onChange={(v) => updateSettings({ micBoost: v })} />
+        <ToggleRow title="Noise reduction" hint="The phone's noise suppression and echo cancelling, for busy or crowded places (Android 13+). Turn off if words get clipped in a quiet room." value={s.noiseReduction} onChange={(v) => updateSettings({ noiseReduction: v })} />
+        <ToggleRow title="Calls: send at every pause" hint="What you say goes as soon as you pause, instead of after the whole sentence. Much quicker replies; long sentences arrive in pieces." value={s.quickSend} onChange={(v) => updateSettings({ quickSend: v })} />
+        <ToggleRow title="Calls: fastest voice" hint="In calls, use the phone's own voice when it has one for the language: it starts at once, where the native-speaker voice is fetched first." value={s.fastCallVoice} onChange={(v) => updateSettings({ fastCallVoice: v })} />
         <View style={{ height: 8 }} />
         <Label>Pause before translating</Label>
         <Choice

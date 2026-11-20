@@ -6,6 +6,7 @@ import { detect, rank, segmentByLanguage, languagesIn } from '../src/services/de
 import italianPack from '../src/learn/italian.ts';
 import { normalizeWords, scorePronunciation, verdict } from '../src/learn/score.ts';
 import { parseShareLink } from '../src/share.ts';
+import { words, unsent, worthSending } from '../src/services/commit.ts';
 import { newCard, addCard, isSaved, grade, dueCards, cardSides, BOX_DAYS } from '../src/learn/review.ts';
 import { extractDetails, buildRecap } from '../src/services/recap.ts';
 import { writtenInvite, hasWrittenInvite, withLink, ENGLISH_INVITE } from '../src/invitemessage.ts';
@@ -602,4 +603,16 @@ test('shared text: links from the selection menu and Share sheet', () => {
   assert.equal(parseShareLink('translateplus://translate?text=%E0%A4%A'), null); // broken encoding
   assert.equal(parseShareLink('https://example.com/?text=hello'), null);
   assert.equal(parseShareLink(null), null);
+});
+
+test('quick send: only what has not been sent yet goes, and fillers wait', () => {
+  assert.deepEqual(words('  dove  si trova '), ['dove', 'si', 'trova']);
+  assert.equal(unsent('dove si trova la stazione', 0), 'dove si trova la stazione');
+  assert.equal(unsent('dove si trova la stazione', 3), 'la stazione');
+  assert.equal(unsent('dove si', 3), ''); // the recogniser shortened it: nothing new
+  assert.ok(worthSending('la stazione'));
+  assert.ok(!worthSending('ehm'));
+  assert.ok(!worthSending(''));
+  assert.ok(worthSending('Perfetto'));
+  assert.ok(!worthSending('sì'));
 });

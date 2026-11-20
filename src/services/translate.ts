@@ -101,6 +101,20 @@ export async function translate(text: string, from: string, to: string, prefer: 
   throw new Error(`Translation unavailable. Check your connection. (${lastError instanceof Error ? lastError.message : 'error'})`);
 }
 
+/**
+ * Opens the connections a call will use (translation and the online voice) before the
+ * first sentence, so it does not pay for setting them up. Failures are ignored.
+ */
+export function warmUp(to: string) {
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), 5000);
+  const q = encodeURIComponent('ok ' + Date.now().toString(36)); // never cached, so it really goes out
+  fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl=${encodeURIComponent(to)}&q=${q}`, { signal: ctrl.signal }).catch(() => {});
+  if (typeof document === 'undefined') {
+    fetch(`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(to)}&q=ok`, { signal: ctrl.signal }).catch(() => {});
+  }
+}
+
 export function clearTranslateCache() {
   cache.clear();
 }

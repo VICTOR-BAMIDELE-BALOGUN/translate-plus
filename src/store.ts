@@ -19,6 +19,10 @@ export type Settings = {
   fishModel: string;
   pauseMicWhileSpeaking: boolean;
   onDeviceRecognition: boolean;
+  micBoost: boolean; // raise quiet speech before recognition (Android 13+)
+  noiseReduction: boolean; // the phone's noise suppression on the mic (Android 13+)
+  quickSend: boolean; // calls: send what was said at each short pause, not only at the end of a sentence
+  fastCallVoice: boolean; // calls: use the phone's own voice when it has one, which starts at once
   accents: Record<string, string>; // language code -> chosen regional locale
   sentencePause: number; // ms of silence before a sentence counts as finished
   provider: 'google' | 'mymemory';
@@ -53,6 +57,10 @@ export const DEFAULT_SETTINGS: Settings = {
   fishModel: 's2.1-pro-free',
   pauseMicWhileSpeaking: true,
   onDeviceRecognition: false,
+  micBoost: true,
+  noiseReduction: true,
+  quickSend: true,
+  fastCallVoice: true,
   accents: {},
   sentencePause: 1500,
   provider: 'google',

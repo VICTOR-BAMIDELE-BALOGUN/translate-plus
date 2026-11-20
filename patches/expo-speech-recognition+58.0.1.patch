@@ -1,0 +1,153 @@
+diff --git a/node_modules/expo-speech-recognition/android/src/main/java/expo/modules/speechrecognition/ExpoAudioRecorder.kt b/node_modules/expo-speech-recognition/android/src/main/java/expo/modules/speechrecognition/ExpoAudioRecorder.kt
+index ae17503..1871600 100644
+--- a/node_modules/expo-speech-recognition/android/src/main/java/expo/modules/speechrecognition/ExpoAudioRecorder.kt
++++ b/node_modules/expo-speech-recognition/android/src/main/java/expo/modules/speechrecognition/ExpoAudioRecorder.kt
+@@ -5,6 +5,10 @@ import android.content.Context
+ import android.media.AudioFormat
+ import android.media.AudioRecord
+ import android.media.MediaRecorder
++import android.media.audiofx.AcousticEchoCanceler
++import android.media.audiofx.AudioEffect
++import android.media.audiofx.AutomaticGainControl
++import android.media.audiofx.NoiseSuppressor
+ import android.os.ParcelFileDescriptor
+ import android.os.ParcelFileDescriptor.AutoCloseOutputStream
+ import android.os.Build
+@@ -69,9 +73,29 @@ class ExpoAudioRecorder(
+     var stoppedAtMillis: Long? = null
+         private set
+ 
++    // Translate+: the phone's own clean-up effects on this recording, released on stop
++    private val effects = mutableListOf<AudioEffect>()
++
++    // Translate+: software gain for quiet speech, smoothed between buffers
++    private var gain = 1.0f
++
+     companion object {
+         private const val TAG = "ExpoAudioRecorder"
+ 
++        /**
++         * Translate+ audio clean-up, set from JS with setAudioProcessing() before start().
++         * noiseReduction: record as a voice call (the phone's noise suppression and echo
++         * cancelling) and attach those effects where available.
++         * boostQuietSpeech: the phone's gain control plus a software gain of up to 8x
++         * (18 dB) so faint speech reaches the recogniser at a normal level.
++         */
++        @Volatile var noiseReduction = false
++        @Volatile var boostQuietSpeech = false
++
++        private const val MAX_GAIN = 8.0f
++        private const val TARGET_RMS = 2500.0 // a comfortable speaking level, of 32767
++        private const val SILENCE_RMS = 40.0 // below this a buffer is room tone: hold the gain
++
+         private fun shortReverseBytes(s: Short): Int =
+             java.lang.Short
+                 .reverseBytes(s)
+@@ -138,7 +162,7 @@ class ExpoAudioRecorder(
+     @SuppressLint("MissingPermission")
+     private fun createRecorder(): AudioRecord =
+         AudioRecord(
+-            MediaRecorder.AudioSource.VOICE_RECOGNITION,
++            if (noiseReduction) MediaRecorder.AudioSource.VOICE_COMMUNICATION else MediaRecorder.AudioSource.VOICE_RECOGNITION,
+             sampleRateInHz,
+             channelConfig,
+             AudioFormat.ENCODING_PCM_16BIT,
+@@ -154,6 +178,8 @@ class ExpoAudioRecorder(
+                 return
+             }
+ 
++            attachEffects(this)
++            gain = 1.0f
+             this.startRecording()
+             isRecordingAudio = true
+ 
+@@ -165,8 +191,64 @@ class ExpoAudioRecorder(
+         }
+     }
+ 
++    private fun attachEffects(recorder: AudioRecord) {
++        val session = recorder.audioSessionId
++        fun add(effect: AudioEffect?) {
++            try {
++                effect?.enabled = true
++                effect?.let { effects.add(it) }
++            } catch (e: Exception) {
++                Log.w(TAG, "Could not enable audio effect", e)
++            }
++        }
++        try {
++            if (noiseReduction && NoiseSuppressor.isAvailable()) add(NoiseSuppressor.create(session))
++            if (noiseReduction && AcousticEchoCanceler.isAvailable()) add(AcousticEchoCanceler.create(session))
++            if (boostQuietSpeech && AutomaticGainControl.isAvailable()) add(AutomaticGainControl.create(session))
++        } catch (e: Exception) {
++            Log.w(TAG, "Audio effects unavailable", e)
++        }
++    }
++
++    private fun releaseEffects() {
++        effects.forEach {
++            try {
++                it.release()
++            } catch (_: Exception) {}
++        }
++        effects.clear()
++    }
++
++    /** Raises quiet speech towards a normal level: drops fast on loud sound, rises slowly. */
++    private fun applyGain(data: ByteArray, length: Int) {
++        val samples = length / 2
++        if (samples == 0) return
++        var sum = 0.0
++        for (i in 0 until samples) {
++            val s = ((data[2 * i + 1].toInt() shl 8) or (data[2 * i].toInt() and 0xff)).toShort().toInt()
++            sum += (s * s).toDouble()
++        }
++        val rms = Math.sqrt(sum / samples)
++        if (rms >= SILENCE_RMS) {
++            val wanted = (TARGET_RMS / rms).toFloat().coerceIn(1.0f, MAX_GAIN)
++            gain = if (wanted < gain) wanted else gain + (wanted - gain) * 0.08f
++        }
++        if (gain <= 1.01f) return
++        for (i in 0 until samples) {
++            val s = ((data[2 * i + 1].toInt() shl 8) or (data[2 * i].toInt() and 0xff)).toShort().toInt()
++            var v = s * gain
++            // soft limit instead of hard clipping, which the recogniser hears as noise
++            val a = Math.abs(v)
++            if (a > 24000f) v = Math.signum(v) * (24000f + (a - 24000f) * 0.15f)
++            val out = v.coerceIn(-32768f, 32767f).toInt()
++            data[2 * i] = (out and 0xff).toByte()
++            data[2 * i + 1] = ((out shr 8) and 0xff).toByte()
++        }
++    }
++
+     override fun stop() {
+         isRecordingAudio = false
++        releaseEffects()
+         audioRecorder?.stop()
+         stoppedAtMillis = System.currentTimeMillis()
+         audioRecorder?.release()
+@@ -217,6 +299,7 @@ class ExpoAudioRecorder(
+ 
+             when {
+                 read > 0 -> {
++                    if (boostQuietSpeech) applyGain(data, read)
+                     try {
+                         outputStream?.write(data, 0, read)
+                         outputStream?.flush()
+diff --git a/node_modules/expo-speech-recognition/android/src/main/java/expo/modules/speechrecognition/ExpoSpeechRecognitionModule.kt b/node_modules/expo-speech-recognition/android/src/main/java/expo/modules/speechrecognition/ExpoSpeechRecognitionModule.kt
+index 25786d5..f194aa0 100644
+--- a/node_modules/expo-speech-recognition/android/src/main/java/expo/modules/speechrecognition/ExpoSpeechRecognitionModule.kt
++++ b/node_modules/expo-speech-recognition/android/src/main/java/expo/modules/speechrecognition/ExpoSpeechRecognitionModule.kt
+@@ -212,6 +212,12 @@ class ExpoSpeechRecognitionModule : Module() {
+                 expoSpeechService.start(options)
+             }
+ 
++            // Translate+: microphone clean-up for the next recording (Android 13+)
++            Function("setAudioProcessing") { noiseReduction: Boolean, boostQuietSpeech: Boolean ->
++                ExpoAudioRecorder.noiseReduction = noiseReduction
++                ExpoAudioRecorder.boostQuietSpeech = boostQuietSpeech
++            }
++
+             Function("stop") {
+                 expoSpeechService.stop()
+             }

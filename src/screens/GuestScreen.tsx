@@ -7,6 +7,7 @@ import { usePalette } from '../theme';
 import { newId, updateSettings, useSettings } from '../store';
 import { RoomConnection, type RoomStatus, type Wire } from '../services/room';
 import { translate } from '../services/translator';
+import { warmUp } from '../services/translate';
 import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import { langName } from '../languages';
@@ -45,7 +46,7 @@ export default function GuestScreen(props: { invite: Invite }) {
     try {
       const out = await translate(wire.text, wire.lang && wire.lang !== 'auto' ? wire.lang : 'auto', s.myLang);
       setLines((prev) => prev.map((l) => (l.id === id ? { ...l, shown: out.text } : l)));
-      speak(out.text, s.myLang);
+      speak(out.text, s.myLang, { fast: true });
       setError(null);
     } catch (e) {
       setLines((prev) => prev.map((l) => (l.id === id ? { ...l, shown: wire.text as string } : l)));
@@ -80,6 +81,7 @@ export default function GuestScreen(props: { invite: Invite }) {
   };
 
   const mic = useListener({
+    commitAfter: s.quickSend ? 700 : undefined,
     onPartial: setPartial,
     onFinal: (t) => {
       setPartial('');
@@ -109,6 +111,7 @@ export default function GuestScreen(props: { invite: Invite }) {
           label={`Join in ${langName(s.myLang)}`}
           onPress={() => {
             stopSpeaking();
+            warmUp(s.myLang);
             setJoined(true);
           }}
         />

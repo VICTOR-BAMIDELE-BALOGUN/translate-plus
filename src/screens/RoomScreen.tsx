@@ -10,6 +10,7 @@ import { usePalette } from '../theme';
 import { addMessage, getSettings, patchMessage, useStore, type ChatMessage, type Room } from '../store';
 import { RoomConnection, type RoomStatus, type Wire } from '../services/room';
 import { translate } from '../services/translator';
+import { warmUp } from '../services/translate';
 import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import InviteSheet, { inviteLinkFor } from '../components/InviteSheet';
@@ -55,7 +56,7 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
       patchMessage(room.code, wire.id, { translated: out.text });
       // speak calls only while I am in the call myself, and only if translating it was quick
       // enough that the phrase is still relevant
-      if (wire.kind === 'call' && inCallRef.current && Date.now() - arrived < 20000) speak(out.text, s.myLang);
+      if (wire.kind === 'call' && inCallRef.current && Date.now() - arrived < 20000) speak(out.text, s.myLang, { fast: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Translation failed');
       if (wire.kind === 'call' && inCallRef.current) setError('Could not translate what they said. Check your connection.');
@@ -90,6 +91,8 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
   };
 
   const mic = useListener({
+    // in a call, send at each short pause so the other person is not left waiting
+    commitAfter: inCall && settings.quickSend ? 700 : undefined,
     onPartial: setPartial,
     onFinal: (t) => {
       setPartial('');
@@ -108,6 +111,7 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
       deactivateKeepAwake('tplus-call').catch(() => {});
       return;
     }
+    warmUp(getSettings().myLang);
     const ok = await mic.start(getSettings().myLang);
     if (!ok) return;
     inCallRef.current = true;

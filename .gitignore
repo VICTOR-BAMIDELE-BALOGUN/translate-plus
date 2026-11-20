@@ -43,3 +43,6 @@ yarn-error.*
 # generated native projects (rebuilt with: npx expo prebuild)
 android/
 ios/
+
+# Android Studio / IntelliJ settings for this computer
+.idea/

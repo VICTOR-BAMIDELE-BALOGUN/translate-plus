@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSyncExternalStore } from 'react';
+import { archiveSession, MAX_SESSION_LINES, type CaptionLine, type CaptionSession, type QuickPhrase } from './services/phonecall';
 
 export type ClonedVoice = { id: string; title: string };
 export type Settings = {
@@ -25,6 +26,8 @@ export type Settings = {
   theme: string; // a theme id from theme.ts
   followSystem: boolean;
   captionSize: number;
+  phoneCallMode: boolean; // Captions: type replies that are spoken into a speakerphone call
+  customPhrases: QuickPhrase[]; // my own one-tap replies for phone-call mode
   listenLanguages: string[]; // the languages expected in a conversation
   paneLayout: 'stacked' | 'side';
   brokerUrl: string;
@@ -56,6 +59,8 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'midnight',
   followSystem: false,
   captionSize: 22,
+  phoneCallMode: false,
+  customPhrases: [],
   listenLanguages: [],
   paneLayout: 'stacked',
   brokerUrl: DEFAULT_BROKER,
@@ -76,13 +81,15 @@ type State = {
   history: HistoryItem[];
   rooms: Room[];
   messages: Record<string, ChatMessage[]>;
+  captionLive: CaptionSession | null; // the Captions conversation in progress (survives tab switches)
+  captionSessions: CaptionSession[]; // finished ones, newest first
 };
 
 const KEY = 'translateplus.state.v1';
 const MAX_HISTORY = 50;
 const MAX_MESSAGES = 200;
 
-let state: State = { ready: false, deviceId: '', settings: DEFAULT_SETTINGS, history: [], rooms: [], messages: {} };
+let state: State = { ready: false, deviceId: '', settings: DEFAULT_SETTINGS, history: [], rooms: [], messages: {}, captionLive: null, captionSessions: [] };
 const listeners = new Set<() => void>();
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -187,5 +194,32 @@ export function patchMessage(code: string, id: string, patch: Partial<ChatMessag
 }
 
 export function resetAll() {
-  set({ settings: DEFAULT_SETTINGS, history: [], rooms: [], messages: {} });
+  set({ settings: DEFAULT_SETTINGS, history: [], rooms: [], messages: {}, captionLive: null, captionSessions: [] });
+}
+
+// ---------- Captions sessions ----------
+
+/** Changes the live session's lines, starting a session if there is none. */
+export function updateCaptionLines(
+  fn: (lines: CaptionLine[]) => CaptionLine[],
+  meta: { theirLang: string; myLang: string; callMode: boolean }
+) {
+  const now = Date.now();
+  const live: CaptionSession = state.captionLive ?? { id: newId(), startedAt: now, updatedAt: now, lines: [], ...meta };
+  const lines = fn(live.lines).slice(-MAX_SESSION_LINES);
+  if (!lines.length && !state.captionLive) return;
+  // a call that starts part-way through a captions session marks the whole session as a call
+  set({ captionLive: { ...live, ...meta, callMode: live.callMode || meta.callMode, lines, updatedAt: now } });
+}
+
+/** Ends the live session and keeps it with the saved ones; returns it (null if empty). */
+export function finishCaptionSession(): CaptionSession | null {
+  const live = state.captionLive;
+  if (!live) return null;
+  set({ captionLive: null, captionSessions: archiveSession(state.captionSessions, live) });
+  return live.lines.length ? live : null;
+}
+
+export function deleteCaptionSession(id: string) {
+  set({ captionSessions: state.captionSessions.filter((s) => s.id !== id) });
 }

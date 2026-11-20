@@ -50,6 +50,7 @@ async function translateMixed(clean: string, to: string): Promise<SmartResult | 
   if (languages.length < 2) return null;
 
   const parts: string[] = [];
+  const results: SmartResult[] = [];
   for (const block of blocks) {
     if (block.lang === to) {
       parts.push(block.text); // already in the target language, leave it alone
@@ -57,13 +58,23 @@ async function translateMixed(clean: string, to: string): Promise<SmartResult | 
     }
     const out = await translateOne(block.text, block.lang ?? 'auto', to);
     parts.push(out.text);
+    results.push(out);
   }
-  return { text: parts.join(' '), provider: 'google', languages };
+  // report what actually did the work: offline only if every block was done on the device
+  const online = results.find((r) => !r.offline);
+  return {
+    text: parts.join(' '),
+    provider: online ? online.provider : 'none',
+    offline: results.length > 0 && !online,
+    languages,
+  };
 }
 
 async function translateOne(text: string, from: string, to: string): Promise<SmartResult> {
   const s = getSettings();
   const route = chooseRoute(s.translationMode, from, to, supported, s.offlineLanguages);
+  // "Offline only" must never fall through to the network, even for one block of a mixed message
+  if (route.use === 'error') throw new Error(route.reason);
   if (route.use === 'offline') {
     try {
       return { text: await offlineTranslate(text, from, to), detected: from, provider: 'none', offline: true };

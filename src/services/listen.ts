@@ -10,6 +10,9 @@ import { isSpeaking, onSpeakingChange } from './tts';
 type Options = {
   onPartial?: (text: string) => void;
   onFinal: (text: string) => void;
+  // force the half-duplex pause on, whatever the setting says (phone-call mode needs it:
+  // the translated voice plays on speaker right next to the microphone)
+  halfDuplex?: boolean;
 };
 
 const BENIGN = new Set(['no-speech', 'aborted', 'speech-timeout']);
@@ -36,7 +39,7 @@ export function useListener(options: Options) {
 
   const begin = useCallback(() => {
     if (!want.current || running.current) return;
-    if (getSettings().pauseMicWhileSpeaking && isSpeaking()) return;
+    if ((opts.current.halfDuplex || getSettings().pauseMicWhileSpeaking) && isSpeaking()) return;
     try {
       running.current = true;
       ExpoSpeechRecognitionModule.start({
@@ -99,7 +102,7 @@ export function useListener(options: Options) {
       }),
     ];
     const offSpeak = onSpeakingChange((speaking) => {
-      if (!want.current || !getSettings().pauseMicWhileSpeaking) return;
+      if (!want.current || !(opts.current.halfDuplex || getSettings().pauseMicWhileSpeaking)) return;
       if (speaking) {
         try {
           ExpoSpeechRecognitionModule.abort();

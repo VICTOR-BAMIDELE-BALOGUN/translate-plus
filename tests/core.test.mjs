@@ -436,3 +436,95 @@ test('accents: regional varieties of a language', () => {
   assert.equal(localeFor('en', { en: 'it-IT' }, 'en-US'), 'en-US');
   assert.equal(localeFor('yo', {}, 'yo-NG'), 'yo-NG');
 });
+
+// ---------- phone-call mode ----------
+import {
+  BUILTIN_PHRASES, MAX_CUSTOM_PHRASES, MAX_CACHED, MAX_SESSIONS, addPhrase, chipLabel, cleanPhrase,
+  createPhraseCache, warmJobs, archiveSession, sessionEntries, sessionTitle,
+} from '../src/services/phonecall.ts';
+
+test('phrases: cleaning, de-duplication and the cap', () => {
+  assert.equal(cleanPhrase('   '), null);
+  assert.equal(cleanPhrase('  My   name is\nAlex  '), 'My name is Alex');
+  let list = [];
+  list = addPhrase(list, { id: '1', text: 'Hello', lang: 'en' });
+  list = addPhrase(list, { id: '2', text: 'hello', lang: 'en' });
+  assert.equal(list.length, 1);
+  assert.equal(list[0].id, '2'); // newest wins
+  for (let i = 0; i < MAX_CUSTOM_PHRASES + 5; i++) list = addPhrase(list, { id: 'x' + i, text: 'p' + i, lang: 'en' });
+  assert.equal(list.length, MAX_CUSTOM_PHRASES);
+  assert.equal(list[0].text, 'p' + (MAX_CUSTOM_PHRASES + 4));
+});
+
+test('phrases: chip labels stay short and break on a word', () => {
+  assert.equal(chipLabel('Yes.'), 'Yes.');
+  const label = chipLabel('My booking number is four five two one, under Alex');
+  assert.ok(label.length <= 25 && label.endsWith('…'));
+  assert.ok(!label.slice(0, -1).endsWith(' '));
+});
+
+test('phrase cache: translates once, reuses, persists and survives failures', async () => {
+  let calls = 0;
+  const saved = [];
+  const cache = createPhraseCache(
+    async (text, from, to) => {
+      calls++;
+      if (text === 'boom') throw new Error('offline');
+      return `[${to}] ${text}`;
+    },
+    { load: async () => ({ 'en>it|Stored': 'Salvato' }), save: (d) => saved.push({ ...d }) }
+  );
+  assert.equal(await cache.get('Stored', 'en', 'it'), 'Salvato'); // from the phone's store
+  assert.equal(calls, 0);
+  assert.equal(await cache.get('Same', 'it', 'it'), 'Same'); // same language: no call
+  const [a, b] = await Promise.all([cache.get('Hi', 'en', 'it'), cache.get('Hi', 'en', 'it')]);
+  assert.equal(a, '[it] Hi');
+  assert.equal(b, a);
+  assert.equal(calls, 1); // two taps at once, one request
+  assert.equal(cache.peek('Hi', 'en', 'it'), '[it] Hi');
+  assert.ok(saved.at(-1)['en>it|Hi']);
+  await assert.rejects(cache.get('boom', 'en', 'it'));
+  const result = await cache.warm([
+    { text: 'Hi', from: 'en', to: 'it' },
+    { text: 'boom', from: 'en', to: 'it' },
+    { text: 'Bye', from: 'en', to: 'it' },
+  ]);
+  assert.deepEqual(result, { done: 3, failed: 1 });
+  assert.equal(cache.peek('Bye', 'en', 'it'), '[it] Bye');
+});
+
+test('phrase cache: keeps only the newest translations', async () => {
+  const cache = createPhraseCache(async (t) => t + '!');
+  for (let i = 0; i < MAX_CACHED + 10; i++) await cache.get('p' + i, 'en', 'it');
+  assert.equal(cache.peek('p0', 'en', 'it'), undefined);
+  assert.equal(cache.peek('p' + (MAX_CACHED + 9), 'en', 'it'), 'p' + (MAX_CACHED + 9) + '!');
+});
+
+test('warm jobs: what they hear, what I read, and labels, without repeats', () => {
+  const jobs = warmJobs(BUILTIN_PHRASES, 'it', 'en');
+  assert.equal(jobs.length, BUILTIN_PHRASES.length); // English speaker: only the Italian side
+  assert.ok(jobs.every((j) => j.from === 'en' && j.to === 'it'));
+  const yoruba = warmJobs([{ id: 'c', text: 'Mo wa', lang: 'yo' }, ...BUILTIN_PHRASES], 'it', 'yo');
+  assert.ok(yoruba.some((j) => j.text === 'Mo wa' && j.to === 'it'));
+  assert.ok(!yoruba.some((j) => j.text === 'Mo wa' && j.to === 'yo'));
+  assert.ok(yoruba.some((j) => j.text === 'Introduce me' && j.to === 'yo'));
+  const twice = warmJobs([...BUILTIN_PHRASES, ...BUILTIN_PHRASES], 'it', 'fr');
+  assert.equal(twice.length, warmJobs(BUILTIN_PHRASES, 'it', 'fr').length);
+});
+
+test('sessions: archive, recap entries and titles', () => {
+  const s = (id, n) => ({ id, startedAt: Date.UTC(2026, 10, 19, 9, 5), updatedAt: 0, theirLang: 'it', myLang: 'en', callMode: true,
+    lines: Array.from({ length: n }, (_, i) => ({ id: id + i, original: 'o' + i, translated: 't' + i, mine: i % 2 === 1, ts: i })) });
+  assert.deepEqual(archiveSession([], s('empty', 0)), []);
+  let list = archiveSession([], s('a', 2));
+  list = archiveSession(list, s('a', 3)); // same session saved again: replaced, not duplicated
+  assert.equal(list.length, 1);
+  assert.equal(list[0].lines.length, 3);
+  for (let i = 0; i < MAX_SESSIONS + 3; i++) list = archiveSession(list, s('s' + i, 1));
+  assert.equal(list.length, MAX_SESSIONS);
+  const entries = sessionEntries(s('b', 2));
+  assert.deepEqual(entries.map((e) => e.who), ['Them', 'Me']);
+  assert.equal(entries[1].mine, true);
+  const title = sessionTitle(s('c', 1), (c) => (c === 'it' ? 'Italian' : c), 'it');
+  assert.match(title, /^Call · Italian · 19 Nov \d\d:05$/);
+});

@@ -34,6 +34,8 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
   const flat = useRef<FlatList<ChatMessage>>(null);
 
   const receive = async (wire: Wire) => {
+    // measured on this phone's own clock: the sender's clock may be minutes off
+    const arrived = Date.now();
     setPeers((prev) => ({
       ...prev,
       [wire.from]: {
@@ -51,8 +53,9 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
     try {
       const out = await translate(wire.text, wire.lang && wire.lang !== s.myLang ? wire.lang : 'auto', s.myLang);
       patchMessage(room.code, wire.id, { translated: out.text });
-      // speak calls only while I am in the call myself, and only if the phrase is fresh
-      if (wire.kind === 'call' && inCallRef.current && Date.now() - wire.ts < 20000) speak(out.text, s.myLang);
+      // speak calls only while I am in the call myself, and only if translating it was quick
+      // enough that the phrase is still relevant
+      if (wire.kind === 'call' && inCallRef.current && Date.now() - arrived < 20000) speak(out.text, s.myLang);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Translation failed');
       if (wire.kind === 'call' && inCallRef.current) setError('Could not translate what they said. Check your connection.');

@@ -1,13 +1,19 @@
 # Free APK build on GitHub Actions. Runs on every push to main and on demand.
-# Download the APK from the run's "Artifacts" section.
+# Download the APK from the run's "Artifacts" section (needs a GitHub login).
+#
+# Pushing a version tag (git tag v1.0.0 && git push origin v1.0.0) also publishes a
+# GitHub Release with the APK attached, downloadable by anyone with no login.
 name: Build Android APK
 on:
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release on a version tag
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,3 +34,18 @@ jobs:
         with:
           name: translate-plus-apk
           path: android/app/build/outputs/apk/release/*.apk
+      - name: Name the APK after the version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: cp android/app/build/outputs/apk/release/app-release.apk "translate-plus-${GITHUB_REF_NAME}.apk"
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: translate-plus-${{ github.ref_name }}.apk
+          generate_release_notes: true
+          body: |
+            Translate+ for Android. Download the APK below on your phone and open it to install
+            (allow "Install unknown apps" if Android asks).
+
+            If an older Translate+ that you built yourself is installed, uninstall it first:
+            builds signed on different computers cannot replace each other.

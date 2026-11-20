@@ -1,6 +1,8 @@
 // Reading text out of a photo in the browser, with Tesseract loaded from a CDN on
 // first use. Keeping it out of the bundle means the app stays small for everyone
 // who never opens the Image tab.
+import { t } from '../i18n/t';
+
 // two sources, because one of them is blocked on some networks
 const CDNS = [
   'https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js',
@@ -61,7 +63,7 @@ function loadTesseract(): Promise<any> {
     }
     loading = null;
     throw new Error(
-      'Could not download the photo reader. It needs the internet the first time; after that it is kept on the device.'
+      t('Could not download the photo reader. It needs the internet the first time; after that it is kept on the device.')
     );
   })();
   return loading;

@@ -1,21 +1,22 @@
 // Phone-call mode logic, kept free of React Native so it can be unit-tested:
 // quick phrases, their translation cache, and saved caption sessions.
 import type { Entry } from './recap';
+import { tk } from '../i18n/t';
 
 export type QuickPhrase = { id: string; text: string; lang: string; label?: string; builtin?: boolean };
 
 // One-tap replies, written in English and translated on demand.
 export const BUILTIN_PHRASES: QuickPhrase[] = [
-  { id: 'b-intro', label: 'Introduce me', text: 'Hello. I am using a translation app, so there may be short pauses. Please speak slowly and stop after each sentence.' },
-  { id: 'b-repeat', label: 'Please repeat', text: 'Sorry, could you please repeat that?' },
-  { id: 'b-slow', label: 'Slower please', text: 'Could you please speak more slowly?' },
-  { id: 'b-wait', label: 'One moment', text: 'One moment please, I am typing my answer.' },
-  { id: 'b-yes', label: 'Yes', text: 'Yes.' },
-  { id: 'b-no', label: 'No', text: 'No.' },
-  { id: 'b-ok', label: 'I understand', text: 'I understand.' },
-  { id: 'b-sms', label: 'Text it to me', text: 'Could you please send that to me by text message?' },
-  { id: 'b-thanks', label: 'Thank you', text: 'Thank you very much.' },
-  { id: 'b-bye', label: 'Goodbye', text: 'Thank you. Goodbye.' },
+  { id: 'b-intro', label: tk('Introduce me'), text: tk('Hello. I am using a translation app, so there may be short pauses. Please speak slowly and stop after each sentence.') },
+  { id: 'b-repeat', label: tk('Please repeat'), text: tk('Sorry, could you please repeat that?') },
+  { id: 'b-slow', label: tk('Slower please'), text: tk('Could you please speak more slowly?') },
+  { id: 'b-wait', label: tk('One moment'), text: tk('One moment please, I am typing my answer.') },
+  { id: 'b-yes', label: tk('Yes'), text: tk('Yes.') },
+  { id: 'b-no', label: tk('No'), text: tk('No.') },
+  { id: 'b-ok', label: tk('I understand'), text: tk('I understand.') },
+  { id: 'b-sms', label: tk('Text it to me'), text: tk('Could you please send that to me by text message?') },
+  { id: 'b-thanks', label: tk('Thank you'), text: tk('Thank you very much.') },
+  { id: 'b-bye', label: tk('Goodbye'), text: tk('Thank you. Goodbye.') },
 ].map((p) => ({ ...p, lang: 'en', builtin: true }));
 
 export const MAX_CUSTOM_PHRASES = 12;

@@ -8,6 +8,7 @@ import { usePalette } from '../theme';
 import { updateSettings, useSettings } from '../store';
 import { hasVariants, mergeVariants } from '../services/accents';
 import { langName } from '../languages';
+import { t } from '../i18n/t';
 
 async function deviceLocales(): Promise<string[]> {
   const found = new Set<string>();
@@ -48,11 +49,9 @@ export default function AccentCard() {
 
   return (
     <Card>
-      <Label>Accent</Label>
+      <Label>{t('Accent')}</Label>
       <Text style={{ color: p.sub, fontSize: 12, lineHeight: 18, marginBottom: 10 }}>
-        Which variety of a language to listen for and speak in. Picking the one that matches how you
-        actually speak makes a real difference — a Nigerian speaking English is understood better as
-        Nigerian English than as American.
+        {t('Which variety of a language to listen for and speak in. Picking the one that matches how you actually speak makes a real difference — a Nigerian speaking English is understood better as Nigerian English than as American.')}
       </Text>
 
       {langs.map((lang) => {
@@ -71,7 +70,7 @@ export default function AccentCard() {
                     key={v.code}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
-                    accessibilityLabel={`${langName(lang)}, ${v.label}`}
+                    accessibilityLabel={`${langName(lang)}, ${t(v.label)}`}
                     onPress={() => updateSettings({ accents: { ...s.accents, [lang]: v.code } })}
                     style={{
                       paddingVertical: 7,
@@ -84,7 +83,7 @@ export default function AccentCard() {
                     }}
                   >
                     <Text style={{ color: on ? p.accentText : p.text, fontWeight: '600', fontSize: 12 }}>
-                      {v.label}
+                      {t(v.label)}
                       {missing ? ' ·' : ''}
                     </Text>
                   </Pressable>
@@ -96,7 +95,7 @@ export default function AccentCard() {
                 small
                 kind="ghost"
                 style={{ alignSelf: 'flex-start', marginTop: 6 }}
-                label={expanded ? 'Fewer' : `All ${options.length}`}
+                label={expanded ? t('Fewer') : t('All {length}', { length: options.length })}
                 onPress={() => setExpanded(!expanded)}
               />
             ) : null}
@@ -106,16 +105,11 @@ export default function AccentCard() {
 
       {locales.length ? (
         <Text style={{ color: p.sub, fontSize: 11, lineHeight: 16 }}>
-          A dot means this phone has no voice or recogniser for that variety yet; Android can download
-          more under language and speech settings.
+          {t('A dot means this phone has no voice or recogniser for that variety yet; Android can download more under language and speech settings.')}
         </Text>
       ) : null}
       <Text style={{ color: p.sub, fontSize: 11, lineHeight: 16, marginTop: 8 }}>
-        Speaking a language that is not your own is harder for any recogniser, and no setting fixes
-        it: there is no model for Italian as spoken by a Nigerian, or Chinese as spoken by an Italian.
-        Speak a little slower, keep the phone close, and correct the text before sending when it
-        matters. In Chinese, Yoruba and other tonal languages the tone carries meaning, so a wrong
-        tone is heard as a different word.
+        {t('Speaking a language that is not your own is harder for any recogniser, and no setting fixes it: there is no model for Italian as spoken by a Nigerian, or Chinese as spoken by an Italian. Speak a little slower, keep the phone close, and correct the text before sending when it matters. In Chinese, Yoruba and other tonal languages the tone carries meaning, so a wrong tone is heard as a different word.')}
       </Text>
     </Card>
   );

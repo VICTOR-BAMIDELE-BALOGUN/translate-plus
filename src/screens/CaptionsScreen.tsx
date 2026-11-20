@@ -40,6 +40,7 @@ import {
   type QuickPhrase,
 } from '../services/phonecall';
 import { phraseCache } from '../services/phrases';
+import { t } from '../i18n/t';
 
 // Captions were on when the user left the tab: switch them back on when they return.
 let resumeListening = false;
@@ -123,7 +124,7 @@ export default function CaptionsScreen() {
         setError(null);
       } catch (e) {
         setLines((prev) => prev.map((l) => (l.id === id ? { ...l, translated: '(not translated)' } : l)));
-        setError(e instanceof Error ? e.message : 'Translation failed');
+        setError(e instanceof Error ? e.message : t('Translation failed'));
       }
     },
   });
@@ -198,7 +199,7 @@ export default function CaptionsScreen() {
       sayOut(out.text, theirLang);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Translation failed');
+      setError(e instanceof Error ? e.message : t('Translation failed'));
       setReply(text);
     } finally {
       setBusy(false);
@@ -218,7 +219,7 @@ export default function CaptionsScreen() {
       sayOut(spoken, theirLang);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Translation failed');
+      setError(e instanceof Error ? e.message : t('Translation failed'));
     } finally {
       setBusy(false);
     }
@@ -260,23 +261,23 @@ export default function CaptionsScreen() {
   return (
     <View style={{ flex: 1, padding: 16 }}>
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-        <LangButton caption="They speak" code={theirLang} onChange={(c) => { updateSettings({ targetLang: c }); if (mic.listening) mic.start(c); }} />
-        <LangButton caption="I read" code={s.myLang} onChange={(c) => updateSettings({ myLang: c })} />
+        <LangButton caption={t('They speak')} code={theirLang} onChange={(c) => { updateSettings({ targetLang: c }); if (mic.listening) mic.start(c); }} />
+        <LangButton caption={t('I read')} code={s.myLang} onChange={(c) => updateSettings({ myLang: c })} />
       </View>
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
         <Btn
           style={{ flex: 1 }}
           kind={mic.listening ? 'warm' : 'primary'}
-          label={mic.listening ? 'Stop captions' : 'Start captions'}
+          label={mic.listening ? t('Stop captions') : t('Start captions')}
           onPress={() => (mic.listening ? mic.stop() : mic.start(theirLang))}
         />
-        <Btn kind="ghost" label="Use on calls" onPress={() => setHelp(true)} />
-        {liveSession && lines.length ? <Btn kind="ghost" label="Recap" onPress={() => openRecap(liveSession)} /> : null}
+        <Btn kind="ghost" label={t('Use on calls')} onPress={() => setHelp(true)} />
+        {liveSession && lines.length ? <Btn kind="ghost" label={t('Recap')} onPress={() => openRecap(liveSession)} /> : null}
       </View>
       <Pressable
         accessibilityRole="switch"
         accessibilityState={{ checked: callMode }}
-        accessibilityLabel="Phone call mode"
+        accessibilityLabel={t('Phone call mode')}
         onPress={toggleCallMode}
         style={{
           flexDirection: 'row',
@@ -292,26 +293,24 @@ export default function CaptionsScreen() {
         }}
       >
         <View style={{ flex: 1 }}>
-          <Text style={{ color: callMode ? p.accentText : p.text, fontWeight: '800', fontSize: 15 }}>
-            Phone call mode {callMode ? 'on' : 'off'}
-          </Text>
+          <Text style={{ color: callMode ? p.accentText : p.text, fontWeight: '800', fontSize: 15 }}>{callMode ? t('Phone call mode on') : t('Phone call mode off')}</Text>
           <Text style={{ color: callMode ? p.accentText : p.sub, fontSize: 12, marginTop: 2, lineHeight: 17 }}>
             {callMode
-              ? `Call on speaker. Don't talk — type. They hear only the ${langName(theirLang)} voice. Tap here when the call ends for its summary.`
-              : 'For normal and WhatsApp calls: you type, they hear only the translation.'}
+              ? t('Call on speaker. Don\'t talk — type. They hear only the {lang} voice. Tap here when the call ends for its summary.', { lang: langName(theirLang) })
+              : t('For normal and WhatsApp calls: you type, they hear only the translation.')}
           </Text>
         </View>
         <Text style={{ color: callMode ? p.accentText : p.sub, fontWeight: '800', fontSize: 13, marginLeft: 10 }}>
-          {callMode ? 'ON' : 'OFF'}
+          {callMode ? t('ON') : t('OFF')}
         </Text>
       </Pressable>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8, alignItems: 'center' }}>
-        <Text style={{ color: p.sub, fontSize: 12 }}>Listening for:</Text>
+        <Text style={{ color: p.sub, fontSize: 12 }}>{t('Listening for:')}</Text>
         {expected.map((code) => (
           <Pressable
             key={code}
             accessibilityRole="button"
-            accessibilityLabel={`Listen in ${langName(code)}`}
+            accessibilityLabel={t('Listen in {lang}', { lang: langName(code) })}
             onPress={() => listenIn(code)}
             onLongPress={() => updateSettings({ listenLanguages: expected.filter((c) => c !== code) })}
             style={{
@@ -340,21 +339,21 @@ export default function CaptionsScreen() {
       </View>
       {expected.length > 1 ? (
         <Text style={{ color: p.sub, fontSize: 11, marginBottom: 6, lineHeight: 16 }}>
-          A phone hears one language at a time. Tap a name to switch, hold to remove. It also switches by itself when what it heard is clearly one of the others.
+          {t('A phone hears one language at a time. Tap a name to switch, hold to remove. It also switches by itself when what it heard is clearly one of the others.')}
         </Text>
       ) : null}
       {switched ? (
-        <Text style={{ color: p.ok, fontSize: 12, marginBottom: 6 }}>Switched to {langName(switched)}</Text>
+        <Text style={{ color: p.ok, fontSize: 12, marginBottom: 6 }}>{t('Switched to {lang}', { lang: langName(switched) })}</Text>
       ) : null}
       <ErrorText>{error || mic.error}</ErrorText>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <Text style={{ flex: 1, color: p.sub, fontSize: 12 }}>
-          {lines.length ? `This conversation · ${lines.length} line${lines.length === 1 ? '' : 's'}` : ''}
+          {lines.length === 1 ? t('This conversation · 1 line') : lines.length ? t('This conversation · {count} lines', { count: lines.length }) : ''}
         </Text>
-        {lines.length && !callMode ? <Btn small kind="ghost" label="New" onPress={newSession} /> : null}
+        {lines.length && !callMode ? <Btn small kind="ghost" label={t('New')} onPress={newSession} /> : null}
         {store.captionSessions.length ? (
-          <Btn small kind="ghost" label={`Saved (${store.captionSessions.length})`} onPress={() => setSavedOpen(true)} />
+          <Btn small kind="ghost" label={t('Saved ({length})', { length: store.captionSessions.length })} onPress={() => setSavedOpen(true)} />
         ) : null}
       </View>
 
@@ -365,13 +364,11 @@ export default function CaptionsScreen() {
         style={{ flex: 1 }}
         onContentSizeChange={() => list.current?.scrollToEnd({ animated: true })}
         ListEmptyComponent={
-          <Text style={{ color: p.sub, textAlign: 'center', marginTop: 40, fontSize: 15 }}>
-            Captions appear here in {langName(s.myLang)} as people speak {langName(theirLang)}.
-          </Text>
+          <Text style={{ color: p.sub, textAlign: 'center', marginTop: 40, fontSize: 15 }}>{t('Captions appear here in {lang} as people speak {lang2}.', { lang: langName(s.myLang), lang2: langName(theirLang) })}</Text>
         }
         renderItem={({ item }) => (
           <Pressable
-            accessibilityHint="Hold to save this line for review in Learn"
+            accessibilityHint={t('Hold to save this line for review in Learn')}
             delayLongPress={450}
             onLongPress={() => {
               const ok = item.mine
@@ -388,7 +385,7 @@ export default function CaptionsScreen() {
             {s.showOriginal ? <Text style={{ color: p.sub, fontSize: 14, marginTop: 2 }}>{item.mine ? item.translated : item.original}</Text> : null}
             {savedLine?.id === item.id ? (
               <Text style={{ color: savedLine.ok ? p.ok : p.sub, fontSize: 12, marginTop: 2 }}>
-                {savedLine.ok ? '★ Saved to Learn → Review' : 'Already saved, or nothing to learn in it'}
+                {savedLine.ok ? t('★ Saved to Learn → Review') : t('Already saved, or nothing to learn in it')}
               </Text>
             ) : null}
           </Pressable>
@@ -408,17 +405,17 @@ export default function CaptionsScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 6 }}>
             <Text style={{ flex: 1, color: speakingNow ? p.ok : p.sub, fontSize: 12 }}>
               {speakingNow
-                ? `Speaking to them in ${langName(theirLang)}… captions paused`
+                ? t('Speaking to them in {lang}… captions paused', { lang: langName(theirLang) })
                 : busy
-                ? 'Translating…'
+                ? t('Translating…')
                 : mic.listening
-                ? 'Listening to the call'
-                : 'Captions are off — tap Start captions to hear them'}
+                ? t('Listening to the call')
+                : t('Captions are off — tap Start captions to hear them')}
             </Text>
             {speakingNow ? (
-              <Btn small kind="danger" label="Stop" onPress={stopSpeaking} />
+              <Btn small kind="danger" label={t('Stop')} onPress={stopSpeaking} />
             ) : lastSaid.current ? (
-              <Btn small kind="ghost" label="Repeat" onPress={() => lastSaid.current && sayOut(lastSaid.current.text, lastSaid.current.lang)} />
+              <Btn small kind="ghost" label={t('Repeat')} onPress={() => lastSaid.current && sayOut(lastSaid.current.text, lastSaid.current.lang)} />
             ) : null}
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, marginTop: 6 }} contentContainerStyle={{ gap: 6 }}>
@@ -426,7 +423,7 @@ export default function CaptionsScreen() {
               <Pressable
                 key={ph.id}
                 accessibilityRole="button"
-                accessibilityLabel={`Say: ${ph.text}`}
+                accessibilityLabel={t('Say: {text}', { text: ph.text })}
                 disabled={busy}
                 onPress={() => sayPhrase(ph)}
                 style={{
@@ -444,20 +441,20 @@ export default function CaptionsScreen() {
             ))}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="My phrases"
+              accessibilityLabel={t('My phrases')}
               onPress={() => setPhrasesOpen(true)}
               style={{ paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderStyle: 'dashed', borderColor: p.accent }}
             >
-              <Text style={{ color: p.accent, fontWeight: '800', fontSize: 13 }}>+ My phrases</Text>
+              <Text style={{ color: p.accent, fontWeight: '800', fontSize: 13 }}>{t('+ My phrases')}</Text>
             </Pressable>
           </ScrollView>
           {warm && warm.total ? (
             <Text style={{ color: warm.done < warm.total ? p.sub : warm.failed ? p.sub : p.ok, fontSize: 11, marginTop: 4 }}>
               {warm.done < warm.total
-                ? `Preparing quick replies ${warm.done}/${warm.total}…`
+                ? t('Preparing quick replies {done}/{total}…', { done: warm.done, total: warm.total })
                 : warm.failed
-                ? `Quick replies ready — ${warm.failed} couldn't be prepared and will translate when tapped`
-                : 'Quick replies ready — they work instantly, even offline'}
+                ? t('Quick replies ready — {failed} couldn\'t be prepared and will translate when tapped', { failed: warm.failed })
+                : t('Quick replies ready — they work instantly, even offline')}
             </Text>
           ) : null}
         </>
@@ -468,7 +465,7 @@ export default function CaptionsScreen() {
           ref={input}
           value={reply}
           onChangeText={setReply}
-          placeholder={`Reply in ${langName(s.myLang)} — spoken in ${langName(theirLang)}`}
+          placeholder={t('Reply in {lang} — spoken in {lang2}', { lang: langName(s.myLang), lang2: langName(theirLang) })}
           placeholderTextColor={p.sub}
           // in a call, Enter sends straight away and the keyboard stays up for the next reply
           multiline={!callMode}
@@ -477,7 +474,7 @@ export default function CaptionsScreen() {
           onSubmitEditing={callMode ? sendReply : undefined}
           style={[styles.input, { flex: 1, color: p.text, borderColor: p.line, backgroundColor: p.card, maxHeight: 100 }]}
         />
-        <Btn label={busy ? '…' : 'Say'} onPress={sendReply} disabled={!reply.trim() || busy} />
+        <Btn label={busy ? '…' : t('Say')} onPress={sendReply} disabled={!reply.trim() || busy} />
       </View>
 
       <RecapSheet visible={!!recap} title={recap?.title ?? ''} entries={recap?.entries ?? []} onClose={() => setRecap(null)} />
@@ -486,28 +483,26 @@ export default function CaptionsScreen() {
       <Modal visible={savedOpen} animationType="slide" onRequestClose={() => setSavedOpen(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
           <ScrollView contentContainerStyle={{ padding: 18 }}>
-            <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 4 }}>Saved conversations</Text>
-            <Text style={{ color: p.sub, fontSize: 13, marginBottom: 14 }}>The last {store.captionSessions.length} are kept on this phone only.</Text>
+            <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 4 }}>{t('Saved conversations')}</Text>
+            <Text style={{ color: p.sub, fontSize: 13, marginBottom: 14 }}>{t('The last {length} are kept on this phone only.', { length: store.captionSessions.length })}</Text>
             {store.captionSessions.map((session) => (
               <Card key={session.id}>
                 <Text style={{ color: p.text, fontSize: 16, fontWeight: '700' }}>{titleOf(session)}</Text>
-                <Text numberOfLines={2} style={{ color: p.sub, fontSize: 13, marginTop: 4 }}>
-                  {session.lines.length} lines · {session.lines[0]?.mine ? session.lines[0].original : session.lines[0]?.translated}
-                </Text>
+                <Text numberOfLines={2} style={{ color: p.sub, fontSize: 13, marginTop: 4 }}>{t('{length} lines · {n}', { length: session.lines.length, n: session.lines[0]?.mine ? session.lines[0].original : session.lines[0]?.translated })}</Text>
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
                   <Btn
                     small
-                    label="Open summary"
+                    label={t('Open summary')}
                     onPress={() => {
                       setSavedOpen(false);
                       openRecap(session);
                     }}
                   />
-                  <Btn small kind="ghost" label="Delete" onPress={() => deleteCaptionSession(session.id)} />
+                  <Btn small kind="ghost" label={t('Delete')} onPress={() => deleteCaptionSession(session.id)} />
                 </View>
               </Card>
             ))}
-            <Btn kind="ghost" label="Close" onPress={() => setSavedOpen(false)} />
+            <Btn kind="ghost" label={t('Close')} onPress={() => setSavedOpen(false)} />
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -516,33 +511,31 @@ export default function CaptionsScreen() {
       <Modal visible={phrasesOpen} animationType="slide" onRequestClose={() => setPhrasesOpen(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
           <ScrollView contentContainerStyle={{ padding: 18 }} keyboardShouldPersistTaps="handled">
-            <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 4 }}>My phrases</Text>
-            <Text style={{ color: p.sub, fontSize: 13, marginBottom: 14, lineHeight: 19 }}>
-              Things you say on most calls — your name, address, a booking number. Write them in {langName(s.myLang)}; one tap speaks them in the caller's language.
-            </Text>
+            <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 4 }}>{t('My phrases')}</Text>
+            <Text style={{ color: p.sub, fontSize: 13, marginBottom: 14, lineHeight: 19 }}>{t('Things you say on most calls — your name, address, a booking number. Write them in {lang}; one tap speaks them in the caller\'s language.', { lang: langName(s.myLang) })}</Text>
             <Card>
-              <Label>New phrase</Label>
+              <Label>{t('New phrase')}</Label>
               <TextInput
                 value={newPhrase}
                 onChangeText={setNewPhrase}
-                placeholder="e.g. My name is Alex. My booking number is 4521."
+                placeholder={t('e.g. My name is Alex. My booking number is 4521.')}
                 placeholderTextColor={p.sub}
                 multiline
                 style={[styles.input, { color: p.text, borderColor: p.line, backgroundColor: p.card, marginBottom: 10 }]}
               />
               <Btn
-                label={s.customPhrases.length >= MAX_CUSTOM_PHRASES ? `Add (replaces the oldest of ${MAX_CUSTOM_PHRASES})` : 'Add'}
+                label={s.customPhrases.length >= MAX_CUSTOM_PHRASES ? t('Add (replaces the oldest of {MAX_CUSTOM_PHRASES})', { MAX_CUSTOM_PHRASES: MAX_CUSTOM_PHRASES }) : t('Add')}
                 onPress={addCustomPhrase}
                 disabled={!cleanPhrase(newPhrase)}
               />
             </Card>
             {s.customPhrases.map((ph) => (
               <Card key={ph.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Text style={{ flex: 1, color: p.text, fontSize: 15, lineHeight: 21 }}>{ph.text}</Text>
-                <Btn small kind="ghost" label="Delete" onPress={() => updateSettings({ customPhrases: s.customPhrases.filter((x) => x.id !== ph.id) })} />
+                <Text style={{ flex: 1, color: p.text, fontSize: 15, lineHeight: 21 }}>{ph.builtin ? t(ph.text) : ph.text}</Text>
+                <Btn small kind="ghost" label={t('Delete')} onPress={() => updateSettings({ customPhrases: s.customPhrases.filter((x) => x.id !== ph.id) })} />
               </Card>
             ))}
-            <Btn kind="ghost" label="Done" onPress={() => setPhrasesOpen(false)} />
+            <Btn kind="ghost" label={t('Done')} onPress={() => setPhrasesOpen(false)} />
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -550,26 +543,14 @@ export default function CaptionsScreen() {
       <Modal visible={help} animationType="slide" onRequestClose={() => setHelp(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
           <ScrollView contentContainerStyle={{ padding: 18 }}>
-            <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 12 }}>Captions on WhatsApp and other app calls</Text>
+            <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 12 }}>{t('Captions on WhatsApp and other app calls')}</Text>
             <Card>
-              <Text style={{ color: p.text, fontSize: 15, lineHeight: 23 }}>
-                1. Set "They speak" to the caller's language and turn on Phone call mode.{'\n'}
-                2. Start or answer the call in WhatsApp (or Telegram, Messenger, a normal phone call…).{'\n'}
-                3. Put the call on speaker.{'\n'}
-                4. Come back to Translate+, or open it as a floating window / split screen so both apps stay visible.{'\n'}
-                5. Tap "Introduce me" so they know to speak slowly.{'\n'}
-                6. Read the captions. To answer, type your reply and press Enter — the phone speaks it in their language and the call picks it up.{'\n'}
-                7. When the call ends, turn Phone call mode off: you get a summary of the dates, times, amounts and addresses that came up, and the call is saved.{'\n\n'}
-                Don't talk yourself: the call hears everything near the phone, so typing is what keeps your own voice out. The other person needs nothing — no app, no link.
-              </Text>
+              <Text style={{ color: p.text, fontSize: 15, lineHeight: 23 }}>{t('1. Set "They speak" to the caller\'s language and turn on Phone call mode.\n2. Start or answer the call in WhatsApp (or Telegram, Messenger, a normal phone call…).\n3. Put the call on speaker.\n4. Come back to Translate+, or open it as a floating window / split screen so both apps stay visible.\n5. Tap "Introduce me" so they know to speak slowly.\n6. Read the captions. To answer, type your reply and press Enter — the phone speaks it in their language and the call picks it up.\n7. When the call ends, turn Phone call mode off: you get a summary of the dates, times, amounts and addresses that came up, and the call is saved.\n\nDon\'t talk yourself: the call hears everything near the phone, so typing is what keeps your own voice out. The other person needs nothing — no app, no link.')}</Text>
             </Card>
             <Card>
-              <Text style={{ color: p.text, fontSize: 15, lineHeight: 23 }}>
-                Why speaker? Android does not let one app listen inside another app's call. Translate+ hears the call the same way a person next to you would: through the loudspeaker and microphone.{'\n\n'}
-                Some phones give the microphone only to the calling app while a call is active. If no captions appear during a call, that is the cause — use an in-app Translate+ call from the Chats tab instead, which does not have this limit.
-              </Text>
+              <Text style={{ color: p.text, fontSize: 15, lineHeight: 23 }}>{t('Why speaker? Android does not let one app listen inside another app\'s call. Translate+ hears the call the same way a person next to you would: through the loudspeaker and microphone.\n\nSome phones give the microphone only to the calling app while a call is active. If no captions appear during a call, that is the cause — use an in-app Translate+ call from the Chats tab instead, which does not have this limit.')}</Text>
             </Card>
-            <Btn label="Got it" onPress={() => setHelp(false)} />
+            <Btn label={t('Got it')} onPress={() => setHelp(false)} />
           </ScrollView>
         </SafeAreaView>
       </Modal>

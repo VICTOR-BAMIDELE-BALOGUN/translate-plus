@@ -7,6 +7,7 @@ import { getSettings } from '../store';
 import { speechLocaleFor } from '../languages';
 import { isSpeaking, onSpeakingChange } from './tts';
 import { unsent, words, worthSending } from './commit';
+import { t } from '../i18n/t';
 
 type Options = {
   onPartial?: (text: string) => void;
@@ -84,7 +85,7 @@ export function useListener(options: Options) {
       });
     } catch (e) {
       running.current = false;
-      setError(e instanceof Error ? e.message : 'Could not start the microphone');
+      setError(e instanceof Error ? e.message : t('Could not start the microphone'));
     }
   }, []);
 
@@ -140,10 +141,10 @@ export function useListener(options: Options) {
           setListening(false);
           setError(
             event.error === 'not-allowed'
-              ? 'Microphone permission is needed. Allow it in Android settings.'
+              ? t('Microphone permission is needed. Allow it in Android settings.')
               : event.error === 'language-not-supported'
-              ? 'This language is not supported by speech recognition on this phone.'
-              : event.message || `Speech recognition stopped (${event.error}).`
+              ? t('This language is not supported by speech recognition on this phone.')
+              : event.message || t('Speech recognition stopped ({error}).', { error: event.error })
           );
         }
       }),
@@ -172,12 +173,12 @@ export function useListener(options: Options) {
     async (language: string) => {
       setError(null);
       if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
-        setError('Speech recognition is not available. Install or enable the Google app.');
+        setError(t('Speech recognition is not available. Install or enable the Google app.'));
         return false;
       }
       const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
       if (!perm.granted) {
-        setError('Microphone permission is needed. Allow it in Android settings.');
+        setError(t('Microphone permission is needed. Allow it in Android settings.'));
         return false;
       }
       const switching = want.current && lang.current !== language;

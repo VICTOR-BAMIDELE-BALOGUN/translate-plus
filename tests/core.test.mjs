@@ -6,6 +6,9 @@ import { detect, rank, segmentByLanguage, languagesIn } from '../src/services/de
 import italianPack from '../src/learn/italian.ts';
 import { normalizeWords, scorePronunciation, verdict } from '../src/learn/score.ts';
 import { parseShareLink } from '../src/share.ts';
+import { protect, restore, batches, parseBatch, translateCatalog } from '../src/i18n/machine.ts';
+import { t as tr, setActive } from '../src/i18n/t.ts';
+import fs from 'node:fs';
 import { words, unsent, worthSending } from '../src/services/commit.ts';
 import { newCard, addCard, isSaved, grade, dueCards, cardSides, BOX_DAYS } from '../src/learn/review.ts';
 import { extractDetails, buildRecap } from '../src/services/recap.ts';
@@ -615,4 +618,60 @@ test('quick send: only what has not been sent yet goes, and fillers wait', () =>
   assert.ok(!worthSending(''));
   assert.ok(worthSending('Perfetto'));
   assert.ok(!worthSending('sì'));
+});
+
+test('app language: placeholders survive machine translation, or the line is dropped', () => {
+  const p = protect('Captions appear in {lang} as people speak {lang2}.\nNext line');
+  assert.equal(p.text, 'Captions appear in ⟦v0⟧ as people speak ⟦v1⟧. ⟦br⟧ Next line');
+  assert.deepEqual(p.vars, ['lang', 'lang2']);
+  assert.equal(restore('Sottotitoli in ⟦v0⟧ mentre parlano ⟦ v1 ⟧. ⟦br⟧ Riga', p.vars), 'Sottotitoli in {lang} mentre parlano {lang2}.\nRiga');
+  assert.equal(restore('Sottotitoli in ⟦v0⟧.', p.vars), null); // lost {lang2}
+  // a marker that wandered into the middle of its line still counts
+  const back = parseBatch('⟦0⟧ 保存\n当人们说话 ⟦v1⟧ 时，⟦1⟧ 字幕出现\n⟦2⟧ ');
+  assert.equal(back.get(0), '保存');
+  assert.equal(back.get(1), '当人们说话 ⟦v1⟧ 时， 字幕出现');
+  assert.ok(!back.has(2));
+  assert.deepEqual(batches(['a'.repeat(10), 'b'.repeat(10), 'c'.repeat(10)], 40), [[0, 1], [2]]);
+});
+
+test('app language: whole catalogue, with retries for lines that fail', async () => {
+  const keys = ['Save', 'Hello {name}', 'Stop'];
+  let calls = 0;
+  const send = async (text, to) => {
+    calls++;
+    assert.equal(to, 'it');
+    if (text.includes('⟦0⟧')) return '⟦0⟧ Salva\n⟦1⟧ Ciao\n⟦2⟧ Stop'; // lost {name}, left Stop in English
+    if (text.includes('⟦v0⟧')) return 'Ciao ⟦v0⟧';
+    return 'Ferma';
+  };
+  const table = await translateCatalog(keys, 'it', send);
+  assert.deepEqual(table, { Save: 'Salva', 'Hello {name}': 'Ciao {name}', Stop: 'Ferma' });
+  assert.equal(calls, 3);
+});
+
+test('app language: lookup, placeholders and English fallback', () => {
+  setActive('it', { 'Hello {name}': 'Ciao {name}' });
+  assert.equal(tr('Hello {name}', { name: 'Ada' }), 'Ciao Ada');
+  assert.equal(tr('Not translated'), 'Not translated');
+  setActive('en', null);
+  assert.equal(tr('Hello {name}', { name: 'Ada' }), 'Hello Ada');
+});
+
+test('app language: every built-in translation is complete and keeps its placeholders', () => {
+  const dir = new URL('../src/i18n/catalogs/', import.meta.url);
+  const english = JSON.parse(fs.readFileSync(new URL('_en.json', dir), 'utf8'));
+  const vars = (s) => [...new Set(s.match(/\{\w+\}/g) || [])].sort().join(' ');
+  const files = fs.readdirSync(dir).filter((f) => /^[a-z]{2}(-[A-Z]{2})?\.json$/.test(f));
+  assert.ok(files.length >= 16, `only ${files.length} languages built in`);
+  for (const f of files) {
+    const table = JSON.parse(fs.readFileSync(new URL(f, dir), 'utf8'));
+    english.forEach((en, i) => {
+      const tx = table[String(i)];
+      assert.ok(typeof tx === 'string' && tx.length > 0, `${f}: #${i} missing (${en.slice(0, 40)})`);
+      assert.equal(vars(tx), vars(en), `${f}: #${i} placeholders differ: ${tx}`);
+      if (/^ /.test(en)) assert.ok(/^ /.test(tx), `${f}: #${i} lost its leading space`);
+      if (en.includes('\n')) assert.ok(tx.includes('\n'), `${f}: #${i} lost its line breaks`);
+    });
+    assert.equal(Object.keys(table).length, english.length, `${f}: extra entries`);
+  }
 });

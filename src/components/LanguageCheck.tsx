@@ -8,6 +8,7 @@ import { updateSettings, useSettings } from '../store';
 import { hasPhoneVoice, openVoiceSettings } from '../services/tts';
 import { downloadOfflineModel, offlineAvailable, offlineSupported } from '../services/offline';
 import { langName } from '../languages';
+import { t } from '../i18n/t';
 
 export default function LanguageCheck() {
   const p = usePalette();
@@ -48,7 +49,7 @@ export default function LanguageCheck() {
       if (!next.includes('en')) next.push('en'); // English is the pivot, fetched with any model
       updateSettings({ offlineLanguages: next });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Download failed. Check your connection.');
+      setError(e instanceof Error ? e.message : t('Download failed. Check your connection.'));
     } finally {
       setBusy(null);
     }
@@ -56,30 +57,25 @@ export default function LanguageCheck() {
 
   return (
     <Card style={{ borderColor: p.warm }}>
-      <Label>Not ready offline</Label>
+      <Label>{t('Not ready offline')}</Label>
       {missingVoice.map((code) => (
         <View key={`v-${code}`} style={{ paddingVertical: 6 }}>
-          <Text style={{ color: p.text, fontSize: 14, lineHeight: 20 }}>
-            This phone has no {langName(code)} voice. Online the native-speaker voice is used, but without
-            internet {langName(code)} would be read in another accent.
-          </Text>
-          <Btn small kind="warm" label={`Get the ${langName(code)} voice`} style={{ alignSelf: 'flex-start', marginTop: 6 }} onPress={() => openVoiceSettings()} />
+          <Text style={{ color: p.text, fontSize: 14, lineHeight: 20 }}>{t('This phone has no {lang} voice. Online the native-speaker voice is used, but without internet {lang} would be read in another accent.', { lang: langName(code) })}</Text>
+          <Btn small kind="warm" label={t('Get the {lang} voice', { lang: langName(code) })} style={{ alignSelf: 'flex-start', marginTop: 6 }} onPress={() => openVoiceSettings()} />
         </View>
       ))}
       {missingVoice.length ? (
         <Text style={{ color: p.sub, fontSize: 12, lineHeight: 18 }}>
-          In the settings that open: Preferred engine → Speech Services by Google → ⚙ → Install voice data.
+          {t('In the settings that open: Preferred engine → Speech Services by Google → ⚙ → Install voice data.')}
         </Text>
       ) : null}
       {missingModel.map((code) => (
         <View key={`m-${code}`} style={{ paddingVertical: 6 }}>
-          <Text style={{ color: p.text, fontSize: 14, lineHeight: 20 }}>
-            {langName(code)} can't be translated without internet yet (about 30 MB to download).
-          </Text>
+          <Text style={{ color: p.text, fontSize: 14, lineHeight: 20 }}>{t('{lang} can\'t be translated without internet yet (about 30 MB to download).', { lang: langName(code) })}</Text>
           <Btn
             small
             kind="warm"
-            label={busy === code ? 'Downloading…' : `Download ${langName(code)}`}
+            label={busy === code ? t('Downloading…') : t('Download {lang}', { lang: langName(code) })}
             disabled={!!busy}
             style={{ alignSelf: 'flex-start', marginTop: 6 }}
             onPress={() => download(code)}

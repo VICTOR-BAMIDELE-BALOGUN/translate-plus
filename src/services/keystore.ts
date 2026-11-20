@@ -2,6 +2,7 @@
 // so the web build falls back to its own storage, which the UI says plainly.
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import { t } from '../i18n/t';
 
 const KEY = 'translateplus.fishKey';
 
@@ -33,7 +34,7 @@ export async function readSecret(): Promise<string | null> {
 export async function writeSecret(value: string): Promise<void> {
   if (Platform.OS === 'web') {
     const store = webStore();
-    if (!store) throw new Error('This browser is blocking storage, so the key cannot be saved.');
+    if (!store) throw new Error(t('This browser is blocking storage, so the key cannot be saved.'));
     if (value) store.setItem(KEY, value);
     else store.removeItem(KEY);
     return;

@@ -12,6 +12,7 @@ import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import { langName } from '../languages';
 import type { Invite } from '../invite';
+import { t } from '../i18n/t';
 
 type Line = { id: string; mine: boolean; original: string; shown: string };
 
@@ -50,7 +51,7 @@ export default function GuestScreen(props: { invite: Invite }) {
       setError(null);
     } catch (e) {
       setLines((prev) => prev.map((l) => (l.id === id ? { ...l, shown: wire.text as string } : l)));
-      setError(e instanceof Error ? e.message : 'Could not translate that.');
+      setError(e instanceof Error ? e.message : t('Could not translate that.'));
     }
   };
   const receiveRef = useRef(receive);
@@ -73,7 +74,7 @@ export default function GuestScreen(props: { invite: Invite }) {
     if (!clean) return;
     const wire = conn.current?.send('call', clean, s.myLang);
     if (!wire) {
-      setError('Not connected yet — that was not sent. Try again in a moment.');
+      setError(t('Not connected yet — that was not sent. Try again in a moment.'));
       return;
     }
     setError(null);
@@ -92,23 +93,21 @@ export default function GuestScreen(props: { invite: Invite }) {
   if (!joined) {
     return (
       <ScrollView contentContainerStyle={{ padding: 20, flexGrow: 1, justifyContent: 'center' }}>
-        <Text style={{ color: p.text, fontSize: 26, fontWeight: '900', marginBottom: 6 }}>
-          {invite.name} wants to talk with you
-        </Text>
+        <Text style={{ color: p.text, fontSize: 26, fontWeight: '900', marginBottom: 6 }}>{t('{name} wants to talk with you', { name: invite.name })}</Text>
         <Text style={{ color: p.sub, fontSize: 15, marginBottom: 20, lineHeight: 22 }}>
-          You each speak your own language. Nothing to install — this page does the translating.
+          {t('You each speak your own language. Nothing to install — this page does the translating.')}
         </Text>
         <Card>
-          <Label>Your language</Label>
+          <Label>{t('Your language')}</Label>
           <View style={{ flexDirection: 'row' }}>
             <LangButton code={s.myLang} onChange={(c) => updateSettings({ myLang: c })} />
           </View>
           <Text style={{ color: p.sub, fontSize: 12, marginTop: 10 }}>
-            Use headphones if you can, and allow the microphone when your browser asks.
+            {t('Use headphones if you can, and allow the microphone when your browser asks.')}
           </Text>
         </Card>
         <Btn
-          label={`Join in ${langName(s.myLang)}`}
+          label={t('Join in {lang}', { lang: langName(s.myLang) })}
           onPress={() => {
             stopSpeaking();
             warmUp(s.myLang);
@@ -116,7 +115,7 @@ export default function GuestScreen(props: { invite: Invite }) {
           }}
         />
         <Text style={{ color: p.sub, fontSize: 11, marginTop: 16, textAlign: 'center' }}>
-          Messages are encrypted with the code in this link.
+          {t('Messages are encrypted with the code in this link.')}
         </Text>
       </ScrollView>
     );
@@ -128,10 +127,10 @@ export default function GuestScreen(props: { invite: Invite }) {
         <View style={{ flex: 1 }}>
           <Text style={{ color: p.text, fontSize: 17, fontWeight: '800' }}>{invite.name}</Text>
           <Text style={{ color: status === 'online' ? p.ok : p.warm, fontSize: 12 }}>
-            {status === 'online' ? (hostHere ? 'Connected' : 'Connected · waiting for them') : status === 'connecting' ? 'Connecting…' : 'Offline · retrying'}
+            {status === 'online' ? (hostHere ? t('Connected') : t('Connected · waiting for them')) : status === 'connecting' ? t('Connecting…') : t('Offline · retrying')}
           </Text>
         </View>
-        <Btn small kind={mic.listening ? 'warm' : 'primary'} label={mic.listening ? 'Stop mic' : 'Speak'} onPress={() => (mic.listening ? mic.stop() : mic.start(s.myLang))} />
+        <Btn small kind={mic.listening ? 'warm' : 'primary'} label={mic.listening ? t('Stop mic') : t('Speak')} onPress={() => (mic.listening ? mic.stop() : mic.start(s.myLang))} />
       </View>
 
       {error || mic.error ? <View style={{ paddingHorizontal: 12 }}><ErrorText>{error || mic.error}</ErrorText></View> : null}
@@ -144,9 +143,7 @@ export default function GuestScreen(props: { invite: Invite }) {
         contentContainerStyle={{ padding: 16 }}
         onContentSizeChange={() => list.current?.scrollToEnd({ animated: true })}
         ListEmptyComponent={
-          <Text style={{ color: p.sub, textAlign: 'center', marginTop: 40, lineHeight: 22 }}>
-            Tap Speak and talk normally.{'\n'}What they say appears here in {langName(s.myLang)}.
-          </Text>
+          <Text style={{ color: p.sub, textAlign: 'center', marginTop: 40, lineHeight: 22 }}>{t('Tap Speak and talk normally. What they say appears here in {lang}.', { lang: langName(s.myLang) })}</Text>
         }
         renderItem={({ item }) => (
           <View style={{ marginBottom: 16, alignItems: item.mine ? 'flex-end' : 'flex-start' }}>
@@ -163,12 +160,12 @@ export default function GuestScreen(props: { invite: Invite }) {
         <TextInput
           value={text}
           onChangeText={setText}
-          placeholder={`Type in ${langName(s.myLang)}`}
+          placeholder={t('Type in {lang}', { lang: langName(s.myLang) })}
           placeholderTextColor={p.sub}
           multiline
           style={[styles.input, { flex: 1, color: p.text, borderColor: p.line, backgroundColor: p.card, maxHeight: 100 }]}
         />
-        <Btn label="Send" disabled={!text.trim()} onPress={() => { send(text); setText(''); }} />
+        <Btn label={t('Send')} disabled={!text.trim()} onPress={() => { send(text); setText(''); }} />
       </View>
     </KeyboardAvoidingView>
   );

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { usePalette } from '../theme';
+import { t, tk } from '../i18n/t';
 
 type Choice = { prompt: () => void; userChoice: Promise<{ outcome: string }> };
 
@@ -61,7 +62,7 @@ export async function runInstall(): Promise<void> {
   notify?.();
 }
 
-export const IOS_STEPS = 'In Safari, tap the Share button, then "Add to Home Screen".';
+export const IOS_STEPS = tk('In Safari, tap the Share button, then "Add to Home Screen".');
 
 export function InstallBanner() {
   const p = usePalette();
@@ -71,14 +72,14 @@ export function InstallBanner() {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: p.cardAlt, borderBottomWidth: 1, borderColor: p.line }}>
       <Text style={{ color: p.text, flex: 1, fontSize: 13, lineHeight: 18 }}>
-        {state === 'prompt' ? 'Add Translate+ to your home screen so it opens like an app.' : IOS_STEPS}
+        {state === 'prompt' ? t('Add Translate+ to your home screen so it opens like an app.') : t(IOS_STEPS)}
       </Text>
       {state === 'prompt' ? (
         <Pressable accessibilityRole="button" onPress={runInstall} style={{ backgroundColor: p.accent, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10 }}>
-          <Text style={{ color: p.accentText, fontWeight: '800', fontSize: 13 }}>Install</Text>
+          <Text style={{ color: p.accentText, fontWeight: '800', fontSize: 13 }}>{t('Install')}</Text>
         </Pressable>
       ) : null}
-      <Pressable accessibilityRole="button" accessibilityLabel="Dismiss" onPress={() => setHidden(true)} style={{ padding: 6 }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t('Dismiss')} onPress={() => setHidden(true)} style={{ padding: 6 }}>
         <Text style={{ color: p.sub, fontSize: 16 }}>✕</Text>
       </Pressable>
     </View>

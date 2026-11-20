@@ -6,6 +6,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Btn, Card, Label, styles } from './ui';
 import { usePalette } from '../theme';
 import { KIND_LABELS, buildRecap, extractDetails, type Entry } from '../services/recap';
+import { t } from '../i18n/t';
 
 export default function RecapSheet(props: { visible: boolean; title: string; entries: Entry[]; onClose: () => void }) {
   const p = usePalette();
@@ -20,7 +21,7 @@ export default function RecapSheet(props: { visible: boolean; title: string; ent
           <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 14 }}>{props.title}</Text>
 
           <Card>
-            <Label>Key details</Label>
+            <Label>{t('Key details')}</Label>
             {details.length ? (
               <>
                 {details.map((d, i) => (
@@ -32,18 +33,18 @@ export default function RecapSheet(props: { visible: boolean; title: string; ent
                   </View>
                 ))}
                 <Text style={{ color: p.sub, fontSize: 11, marginTop: 2, lineHeight: 16 }}>
-                  Found automatically. Check each one against the conversation before relying on it.
+                  {t('Found automatically. Check each one against the conversation before relying on it.')}
                 </Text>
               </>
             ) : (
               <Text style={{ color: p.sub, fontSize: 14 }}>
-                No times, dates, amounts or contacts came up. The conversation is below.
+                {t('No times, dates, amounts or contacts came up. The conversation is below.')}
               </Text>
             )}
           </Card>
 
           <Card style={{ backgroundColor: p.cardAlt }}>
-            <Label>Conversation · {props.entries.length} lines</Label>
+            <Label>{t('Conversation · {length} lines', { length: props.entries.length })}</Label>
             {props.entries.map((e, i) => (
               <View key={i} style={{ marginBottom: 10 }}>
                 <Text style={{ color: p.sub, fontSize: 11 }}>{e.who}</Text>
@@ -59,7 +60,7 @@ export default function RecapSheet(props: { visible: boolean; title: string; ent
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Btn
               style={{ flex: 1 }}
-              label="Copy"
+              label={t('Copy')}
               onPress={async () => {
                 await Clipboard.setStringAsync(text);
                 setDone('Copied — paste it into your notes.');
@@ -67,7 +68,7 @@ export default function RecapSheet(props: { visible: boolean; title: string; ent
             />
             <Btn
               kind="ghost"
-              label="Share"
+              label={t('Share')}
               onPress={async () => {
                 try {
                   const nav: any = Platform.OS === 'web' && typeof navigator !== 'undefined' ? navigator : null;
@@ -81,7 +82,7 @@ export default function RecapSheet(props: { visible: boolean; title: string; ent
                 }
               }}
             />
-            <Btn kind="ghost" label="Close" onPress={props.onClose} />
+            <Btn kind="ghost" label={t('Close')} onPress={props.onClose} />
           </View>
         </ScrollView>
       </SafeAreaView>

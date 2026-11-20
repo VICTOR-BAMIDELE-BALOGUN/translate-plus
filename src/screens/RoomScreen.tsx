@@ -15,6 +15,7 @@ import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import InviteSheet, { inviteLinkFor } from '../components/InviteSheet';
 import RecapSheet from '../components/RecapSheet';
+import { t } from '../i18n/t';
 
 export default function RoomScreen(props: { room: Room; onBack: () => void }) {
   const { room } = props;
@@ -58,8 +59,8 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
       // enough that the phrase is still relevant
       if (wire.kind === 'call' && inCallRef.current && Date.now() - arrived < 20000) speak(out.text, s.myLang, { fast: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Translation failed');
-      if (wire.kind === 'call' && inCallRef.current) setError('Could not translate what they said. Check your connection.');
+      setError(e instanceof Error ? e.message : t('Translation failed'));
+      if (wire.kind === 'call' && inCallRef.current) setError(t('Could not translate what they said. Check your connection.'));
     }
   };
   const receiveRef = useRef(receive);
@@ -82,7 +83,7 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
     if (!clean) return false;
     const wire = conn.current?.send(kind, clean, getSettings().myLang);
     if (!wire) {
-      setError('Not connected. Your message was not sent — try again in a moment.');
+      setError(t('Not connected. Your message was not sent — try again in a moment.'));
       return false;
     }
     setError(null);
@@ -149,7 +150,7 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
       <InviteSheet room={inviting ? room : null} onClose={() => setInviting(false)} />
       <RecapSheet
         visible={recapOpen}
-        title={`Conversation with ${room.name}`}
+        title={t('Conversation with {name}', { name: room.name })}
         entries={list.map((m) => ({
           who: m.mine ? 'Me' : m.name,
           mine: m.mine,
@@ -160,19 +161,19 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
         onClose={() => setRecapOpen(false)}
       />
       <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 8, borderBottomWidth: 1, borderColor: p.line }}>
-        <Btn small kind="ghost" label="‹ Back" onPress={props.onBack} />
+        <Btn small kind="ghost" label={t('‹ Back')} onPress={props.onBack} />
         <View style={{ flex: 1 }}>
           <Text numberOfLines={1} style={{ color: p.text, fontSize: 17, fontWeight: '800' }}>{room.name}</Text>
           <Text numberOfLines={1} style={{ color: status === 'online' ? p.ok : p.warm, fontSize: 12 }}>{statusText}</Text>
         </View>
-        {list.length ? <Btn small kind="ghost" label="Recap" onPress={() => setRecapOpen(true)} /> : null}
-        <Btn small kind="ghost" label="Invite" onPress={() => setInviting(true)} />
-        <Btn small kind={inCall ? 'danger' : 'primary'} label={inCall ? 'End call' : 'Call'} onPress={toggleCall} />
+        {list.length ? <Btn small kind="ghost" label={t('Recap')} onPress={() => setRecapOpen(true)} /> : null}
+        <Btn small kind="ghost" label={t('Invite')} onPress={() => setInviting(true)} />
+        <Btn small kind={inCall ? 'danger' : 'primary'} label={inCall ? t('End call') : t('Call')} onPress={toggleCall} />
       </View>
 
       <Text
         accessibilityRole="button"
-        accessibilityLabel="Copy invite code"
+        accessibilityLabel={t('Copy invite code')}
         onPress={async () => {
           const payload = inviteLinkFor(room) || room.code;
           await Clipboard.setStringAsync(payload).catch(() => {});
@@ -181,17 +182,17 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
         }}
         style={{ color: p.sub, fontSize: 12, paddingHorizontal: 12, paddingVertical: 6 }}
       >
-        Invite code: <Text style={{ color: p.text, fontWeight: '700' }}>{room.code}</Text> ·{' '}
-        {copied ? 'copied' : inviteLinkFor(room) ? 'tap to copy the call link' : 'tap to copy'}
+        {t('Invite code:')}{' '}<Text style={{ color: p.text, fontWeight: '700' }}>{room.code}</Text> ·{' '}
+        {copied ? 'copied' : inviteLinkFor(room) ? t('tap to copy the call link') : t('tap to copy')}
       </Text>
 
       {inCall ? (
         <View style={{ padding: 12, backgroundColor: p.cardAlt }}>
           <Text style={{ color: p.text, fontWeight: '700' }}>
-            Translated call is on{peerInCall ? '' : ' — waiting for the other person to tap Call'}
+            {t('Translated call is on')}{peerInCall ? '' : t(' — waiting for the other person to tap Call')}
           </Text>
           <Text style={{ color: p.sub, fontSize: 13, marginTop: 2 }}>
-            {partial ? '🎙 ' + partial : 'Speak normally. They hear you in their language. Headphones give the best result.'}
+            {partial ? '🎙 ' + partial : t('Speak normally. They hear you in their language. Headphones give the best result.')}
           </Text>
         </View>
       ) : null}
@@ -205,9 +206,7 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
         contentContainerStyle={{ padding: 12 }}
         onContentSizeChange={() => flat.current?.scrollToEnd({ animated: false })}
         ListEmptyComponent={
-          <Text style={{ color: p.sub, textAlign: 'center', marginTop: 40, lineHeight: 22 }}>
-            Send the invite code to the other person.{'\n'}You each write in your own language.
-          </Text>
+          <Text style={{ color: p.sub, textAlign: 'center', marginTop: 40, lineHeight: 22 }}>{t('Send the invite code to the other person. You each write in your own language.')}</Text>
         }
         renderItem={({ item }) => {
           const main = item.mine ? item.text : item.translated ?? item.text;
@@ -215,12 +214,12 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
           return (
             <View style={{ alignItems: item.mine ? 'flex-end' : 'flex-start', marginBottom: 10 }}>
               <View style={{ maxWidth: '85%', backgroundColor: item.mine ? p.accent : p.card, borderColor: p.line, borderWidth: item.mine ? 0 : 1, borderRadius: 16, padding: 10 }}>
-                {!item.mine ? <Text style={{ color: p.sub, fontSize: 11, marginBottom: 2 }}>{item.name}{item.kind === 'call' ? ' · call' : ''}</Text> : null}
+                {!item.mine ? <Text style={{ color: p.sub, fontSize: 11, marginBottom: 2 }}>{item.name}{item.kind === 'call' ? t(' · call') : ''}</Text> : null}
                 <Text selectable style={{ color: item.mine ? p.accentText : p.text, fontSize: 16, lineHeight: 22 }}>{main}</Text>
                 {showOrig ? <Text selectable style={{ color: p.sub, fontSize: 13, marginTop: 4 }}>{item.text}</Text> : null}
                 {!item.mine && item.translated ? (
                   <Text style={{ color: p.sub, fontSize: 10, marginTop: 4 }} onPress={() => speak(item.translated as string, settings.myLang)}>
-                    Translated · tap to listen
+                    {t('Translated · tap to listen')}
                   </Text>
                 ) : null}
               </View>
@@ -231,16 +230,16 @@ export default function RoomScreen(props: { room: Room; onBack: () => void }) {
 
       {!inCall ? (
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end', padding: 12 }}>
-          <Btn small kind={mic.listening ? 'warm' : 'ghost'} label={mic.listening ? 'Stop' : 'Mic'} onPress={() => (mic.listening ? mic.stop() : mic.start(settings.myLang))} />
+          <Btn small kind={mic.listening ? 'warm' : 'ghost'} label={mic.listening ? t('Stop') : t('Mic')} onPress={() => (mic.listening ? mic.stop() : mic.start(settings.myLang))} />
           <TextInput
             value={mic.listening && partial ? (text ? text + ' ' : '') + partial : text}
             onChangeText={setText}
-            placeholder="Message in your language"
+            placeholder={t('Message in your language')}
             placeholderTextColor={p.sub}
             multiline
             style={[styles.input, { flex: 1, color: p.text, borderColor: p.line, backgroundColor: p.card, maxHeight: 110 }]}
           />
-          <Btn label="Send" disabled={!text.trim()} onPress={() => { if (post('chat', text)) setText(''); }} />
+          <Btn label={t('Send')} disabled={!text.trim()} onPress={() => { if (post('chat', text)) setText(''); }} />
         </View>
       ) : null}
     </KeyboardAvoidingView>

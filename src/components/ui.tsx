@@ -3,6 +3,7 @@ import { FlatList, Modal, Pressable, StyleSheet, Switch, Text, TextInput, View, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AUTO, LANGUAGES, langName, type Lang } from '../languages';
 import { usePalette } from '../theme';
+import { t } from '../i18n/t';
 
 export function Btn(props: {
   label: string; onPress: () => void; kind?: 'primary' | 'ghost' | 'danger' | 'warm';
@@ -87,25 +88,36 @@ export function Choice<T extends string>(props: { options: { value: T; label: st
   );
 }
 
-export function LangButton(props: { code: string; onChange: (code: string) => void; allowAuto?: boolean; style?: ViewStyle; caption?: string }) {
+export function LangButton(props: {
+  code: string;
+  onChange: (code: string) => void;
+  allowAuto?: boolean;
+  /** what the 'auto' entry is called, when it does not mean detecting the language */
+  autoLabel?: string;
+  style?: ViewStyle;
+  caption?: string;
+}) {
   const p = usePalette();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const data = useMemo(() => {
-    const all: Lang[] = props.allowAuto ? [AUTO, ...LANGUAGES] : LANGUAGES;
+    const auto: Lang = props.autoLabel ? { ...AUTO, name: props.autoLabel } : AUTO;
+    const all: Lang[] = props.allowAuto ? [auto, ...LANGUAGES] : LANGUAGES;
     const needle = q.trim().toLowerCase();
-    return needle ? all.filter((l) => l.name.toLowerCase().includes(needle)) : all;
-  }, [q, props.allowAuto]);
+    // search both the translated and the English name
+    return needle ? all.filter((l) => (l.code === 'auto' ? l.name : langName(l.code)).toLowerCase().includes(needle) || l.name.toLowerCase().includes(needle)) : all;
+  }, [q, props.allowAuto, props.autoLabel]);
+  const nameOf = (code: string) => (code === 'auto' && props.autoLabel ? props.autoLabel : langName(code));
   return (
     <>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${props.caption ?? 'Language'}: ${langName(props.code)}`}
+        accessibilityLabel={`${props.caption ?? t('Language')}: ${nameOf(props.code)}`}
         onPress={() => setOpen(true)}
         style={[styles.lang, { backgroundColor: p.cardAlt, borderColor: p.line }, props.style]}
       >
         {props.caption ? <Text style={{ color: p.sub, fontSize: 11 }}>{props.caption}</Text> : null}
-        <Text numberOfLines={1} style={{ color: p.text, fontWeight: '700', fontSize: 15 }}>{langName(props.code)}</Text>
+        <Text numberOfLines={1} style={{ color: p.text, fontWeight: '700', fontSize: 15 }}>{nameOf(props.code)}</Text>
       </Pressable>
       <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
@@ -113,11 +125,11 @@ export function LangButton(props: { code: string; onChange: (code: string) => vo
             <TextInput
               value={q}
               onChangeText={setQ}
-              placeholder="Search languages"
+              placeholder={t('Search languages')}
               placeholderTextColor={p.sub}
               style={[styles.input, { flex: 1, color: p.text, borderColor: p.line, backgroundColor: p.card }]}
             />
-            <Btn small kind="ghost" label="Close" onPress={() => setOpen(false)} />
+            <Btn small kind="ghost" label={t('Close')} onPress={() => setOpen(false)} />
           </View>
           <FlatList
             data={data}
@@ -133,7 +145,7 @@ export function LangButton(props: { code: string; onChange: (code: string) => vo
                 style={{ paddingVertical: 14, paddingHorizontal: 18, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: p.line }}
               >
                 <Text style={{ color: item.code === props.code ? p.accent : p.text, fontSize: 16, fontWeight: item.code === props.code ? '700' : '400' }}>
-                  {item.name}
+                  {nameOf(item.code)}
                 </Text>
               </Pressable>
             )}

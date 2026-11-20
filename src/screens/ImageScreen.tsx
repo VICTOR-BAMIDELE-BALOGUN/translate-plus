@@ -10,6 +10,7 @@ import { translate } from '../services/translator';
 import { speak, stopSpeaking } from '../services/tts';
 import { ocrNote, ocrSupported, readTextFromImage } from '../services/ocr';
 import { langName } from '../languages';
+import { t } from '../i18n/t';
 
 export default function ImageScreen() {
   const p = usePalette();
@@ -41,7 +42,7 @@ export default function ImageScreen() {
       if (id !== seq.current) return;
       if (!text) {
         setStage('idle');
-        setError('No text found in that photo. Try a closer or sharper picture.');
+        setError(t('No text found in that photo. Try a closer or sharper picture.'));
         return;
       }
       setSource(text);
@@ -53,7 +54,7 @@ export default function ImageScreen() {
     } catch (e) {
       if (id !== seq.current) return;
       setStage('idle');
-      setError(e instanceof Error ? e.message : 'Could not read that photo.');
+      setError(e instanceof Error ? e.message : t('Could not read that photo.'));
     }
   };
 
@@ -63,7 +64,7 @@ export default function ImageScreen() {
       if (fromCamera) {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) {
-          setError('Camera permission is needed to take a photo.');
+          setError(t('Camera permission is needed to take a photo.'));
           return;
         }
       }
@@ -73,7 +74,7 @@ export default function ImageScreen() {
       if (picked.canceled || !picked.assets?.length) return;
       await run(picked.assets[0].uri, photoLang);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not open the photo.');
+      setError(e instanceof Error ? e.message : t('Could not open the photo.'));
     }
   };
 
@@ -94,7 +95,7 @@ export default function ImageScreen() {
     } catch (e) {
       if (id !== seq.current) return;
       setStage('idle');
-      setError(e instanceof Error ? e.message : 'Translation failed');
+      setError(e instanceof Error ? e.message : t('Translation failed'));
     }
   };
 
@@ -104,19 +105,19 @@ export default function ImageScreen() {
     <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
         <LangButton
-          caption="Language in the photo"
+          caption={t('Language in the photo')}
           code={photoLang}
           onChange={(c) => {
             setPhotoLang(c);
             if (uri) run(uri, c);
           }}
         />
-        <LangButton caption="Into" code={s.myLang} onChange={(c) => updateSettings({ myLang: c })} />
+        <LangButton caption={t('Into')} code={s.myLang} onChange={(c) => updateSettings({ myLang: c })} />
       </View>
 
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-        <Btn style={{ flex: 1 }} label="Take a photo" onPress={() => pick(true)} disabled={stage !== 'idle'} />
-        <Btn style={{ flex: 1 }} kind="ghost" label="Choose a photo" onPress={() => pick(false)} disabled={stage !== 'idle'} />
+        <Btn style={{ flex: 1 }} label={t('Take a photo')} onPress={() => pick(true)} disabled={stage !== 'idle'} />
+        <Btn style={{ flex: 1 }} kind="ghost" label={t('Choose a photo')} onPress={() => pick(false)} disabled={stage !== 'idle'} />
       </View>
 
       {note ? <Text style={{ color: p.warm, fontSize: 12, marginBottom: 10 }}>{note}</Text> : null}
@@ -130,22 +131,20 @@ export default function ImageScreen() {
         />
       ) : (
         <Card>
-          <Text style={{ color: p.sub, fontSize: 14, lineHeight: 21 }}>
-            Photograph a sign, a menu, a letter or a screenshot and it comes back in {langName(s.myLang)}. The text is editable afterwards, so you can fix anything misread before translating.
-          </Text>
+          <Text style={{ color: p.sub, fontSize: 14, lineHeight: 21 }}>{t('Photograph a sign, a menu, a letter or a screenshot and it comes back in {lang}. The text is editable afterwards, so you can fix anything misread before translating.', { lang: langName(s.myLang) })}</Text>
         </Card>
       )}
 
       {stage === 'reading' ? (
         <Text style={{ color: p.sub, fontSize: 13, marginBottom: 10 }}>
-          Reading the photo{progress > 0 ? ` · ${Math.round(progress * 100)}%` : '…'}
-          {progress === 0 ? ' (the first photo takes longer while the reader downloads)' : ''}
+          {t('Reading the photo')}{progress > 0 ? ` · ${Math.round(progress * 100)}%` : '…'}
+          {progress === 0 ? t(' (the first photo takes longer while the reader downloads)') : ''}
         </Text>
       ) : null}
 
       {source ? (
         <Card>
-          <Label>Text in the photo · {langName(photoLang)}</Label>
+          <Label>{t('Text in the photo · {lang}', { lang: langName(photoLang) })}</Label>
           <TextInput
             value={source}
             onChangeText={retranslate}
@@ -157,14 +156,14 @@ export default function ImageScreen() {
 
       {result ? (
         <Card style={{ backgroundColor: p.cardAlt }}>
-          <Label>{langName(s.myLang)}{stage === 'translating' ? ' · translating…' : ''}</Label>
+          <Label>{langName(s.myLang)}{stage === 'translating' ? t(' · translating…') : ''}</Label>
           <Text selectable style={{ color: p.text, fontSize: 18, lineHeight: 26 }}>{result}</Text>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-            <Btn small label="Listen" onPress={() => { stopSpeaking(); speak(result, s.myLang); }} />
+            <Btn small label={t('Listen')} onPress={() => { stopSpeaking(); speak(result, s.myLang); }} />
             <Btn
               small
               kind="ghost"
-              label={copied ? 'Copied' : 'Copy'}
+              label={copied ? t('Copied') : t('Copy')}
               onPress={async () => {
                 await Clipboard.setStringAsync(result);
                 setCopied(true);

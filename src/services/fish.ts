@@ -2,6 +2,7 @@
 // and text-to-speech in that voice. Uses the user's own free API key.
 import { Platform } from 'react-native';
 import { readSecret, writeSecret } from './keystore';
+import { t } from '../i18n/t';
 
 const BASE = 'https://api.fish.audio';
 
@@ -25,15 +26,15 @@ async function failure(res: Response): Promise<Error> {
     const body = await res.json();
     detail = body?.message || body?.detail || '';
   } catch {}
-  if (res.status === 401) return new Error('Fish Audio rejected the API key. Check it in Settings.');
-  if (res.status === 402) return new Error('Fish Audio: no credit left on this account.');
-  if (res.status === 429) return new Error('Fish Audio: too many requests, try again shortly.');
-  return new Error(`Fish Audio error ${res.status}${detail ? ': ' + detail : ''}`);
+  if (res.status === 401) return new Error(t('Fish Audio rejected the API key. Check it in Settings.'));
+  if (res.status === 402) return new Error(t('Fish Audio: no credit left on this account.'));
+  if (res.status === 429) return new Error(t('Fish Audio: too many requests, try again shortly.'));
+  return new Error(t('Fish Audio error {status}{n}', { status: res.status, n: detail ? ': ' + detail : '' }));
 }
 
 export async function createVoice(title: string, fileUri: string): Promise<{ id: string; title: string }> {
   const key = await getFishKey();
-  if (!key) throw new Error('Add your Fish Audio API key first.');
+  if (!key) throw new Error(t('Add your Fish Audio API key first.'));
   const form = new FormData();
   form.append('type', 'tts');
   form.append('title', title);
@@ -50,7 +51,7 @@ export async function createVoice(title: string, fileUri: string): Promise<{ id:
   const res = await fetch(`${BASE}/model`, { method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: form });
   if (!res.ok) throw await failure(res);
   const body = await res.json();
-  if (!body?._id) throw new Error('Fish Audio did not return a voice id.');
+  if (!body?._id) throw new Error(t('Fish Audio did not return a voice id.'));
   return { id: String(body._id), title: String(body.title ?? title) };
 }
 
@@ -63,7 +64,7 @@ export async function deleteVoice(id: string): Promise<void> {
 
 export async function synthesize(text: string, voiceId: string, model: string, speed: number): Promise<ArrayBuffer> {
   const key = await getFishKey();
-  if (!key) throw new Error('Add your Fish Audio API key first.');
+  if (!key) throw new Error(t('Add your Fish Audio API key first.'));
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 15000);
   try {

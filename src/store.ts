@@ -6,6 +6,7 @@ import { addCard, cardSides, grade, isSaved, newCard, type Card } from './learn/
 export type ClonedVoice = { id: string; title: string };
 export type Settings = {
   displayName: string;
+  uiLang: string; // the app's own language; 'auto' follows the phone
   myLang: string; // language I speak and read
   targetLang: string; // default language I translate into
   autoTranslateChats: boolean;
@@ -44,6 +45,7 @@ export const DEFAULT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
 
 export const DEFAULT_SETTINGS: Settings = {
   displayName: 'Me',
+  uiLang: 'auto',
   myLang: 'en',
   targetLang: 'it',
   autoTranslateChats: true,

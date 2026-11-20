@@ -8,19 +8,21 @@ import { deleteCard, gradeCard, toggleCard, useStore } from '../store';
 import { speak, stopSpeaking } from '../services/tts';
 import { useListener } from '../services/listen';
 import { availablePacks, packFor, searchPack, type Phrase } from '../learn';
+import { useLocalizedPack } from '../learn/localize';
 import { dueCards, isSaved, type Card as SavedCard } from '../learn/review';
 import { scorePronunciation, verdict, type Score } from '../learn/score';
 import { langName } from '../languages';
+import { t } from '../i18n/t';
 
 type Section = 'phrases' | 'review' | 'sounds' | 'notes' | 'resources';
 
 function when(ms: number): string {
   const mins = Math.round((ms - Date.now()) / 60000);
-  if (mins < 60) return mins <= 1 ? 'in a minute' : `in ${mins} minutes`;
+  if (mins < 60) return mins <= 1 ? t('in a minute') : t('in {count} minutes', { count: mins });
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `in ${hours} hour${hours === 1 ? '' : 's'}`;
+  if (hours < 24) return hours === 1 ? t('in an hour') : t('in {count} hours', { count: hours });
   const days = Math.round(hours / 24);
-  return days === 1 ? 'tomorrow' : `in ${days} days`;
+  return days === 1 ? t('tomorrow') : t('in {count} days', { count: days });
 }
 
 export default function LearnScreen() {
@@ -29,7 +31,8 @@ export default function LearnScreen() {
   const packs = availablePacks();
   // the language being learnt is normally the one being translated into
   const [lang, setLang] = useState(() => (packFor(s.targetLang) ? s.targetLang : packs[0]?.lang) ?? 'it');
-  const pack = packFor(lang) ?? packs[0];
+  // explanations in the app's language; the phrases themselves stay as they are
+  const { pack, translating } = useLocalizedPack(packFor(lang) ?? packs[0]);
   const [section, setSection] = useState<Section>('phrases');
   const [open, setOpen] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -102,7 +105,7 @@ export default function LearnScreen() {
   if (!pack) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
-        <Text style={{ color: p.sub }}>No course material is bundled yet.</Text>
+        <Text style={{ color: p.sub }}>{t('No course material is bundled yet.')}</Text>
       </View>
     );
   }
@@ -124,7 +127,7 @@ export default function LearnScreen() {
     return (
       <View style={{ marginTop: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Btn small kind={on ? 'warm' : 'ghost'} label={on ? 'Listening… tap to stop' : '🎤 Say it'} onPress={() => practise(key, text, lang)} />
+          <Btn small kind={on ? 'warm' : 'ghost'} label={on ? t('Listening… tap to stop') : t('🎤 Say it')} onPress={() => practise(key, text, lang)} />
           {score ? (
             <Text style={{ color: score.percent >= 70 ? p.ok : score.percent >= 40 ? p.warm : p.danger, fontSize: 13, fontWeight: '800' }}>
               {score.percent}% · {verdict(score.percent)}
@@ -150,7 +153,7 @@ export default function LearnScreen() {
               ))}
             </Text>
             <Text style={{ color: p.sub, fontSize: 12, marginTop: 2 }}>
-              {score.heard ? `Heard: "${score.heard}". ` : 'Nothing was heard. '}Green is right, orange nearly, red missed.
+              {score.heard ? t('Heard: "{heard}". ', { heard: score.heard }) : t('Nothing was heard. ')}{t('Green is right, orange nearly, red missed.')}
             </Text>
           </View>
         ) : null}
@@ -166,21 +169,21 @@ export default function LearnScreen() {
       <Pressable
         key={key}
         accessibilityRole="button"
-        accessibilityLabel={`${phrase.it}. ${phrase.en}. Tap to hear it.`}
+        accessibilityLabel={`${phrase.it}. ${phrase.en}. ${t('Tap to hear it.')}`}
         onPress={() => (covered ? setRevealed((r) => ({ ...r, [key]: true })) : say(phrase))}
         onLongPress={() => copy(phrase)}
         style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: p.line }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={{ color: covered ? p.sub : p.text, fontSize: 17, fontWeight: '700', flex: 1 }}>
-            {covered ? 'Tap to show' : phrase.it}
+            {covered ? t('Tap to show') : phrase.it}
           </Text>
           {phrase.formal ? (
-            <Text style={{ color: p.warm, fontSize: 10, fontWeight: '800' }}>LEI</Text>
+            <Text style={{ color: p.warm, fontSize: 10, fontWeight: '800' }}>{t('LEI')}</Text>
           ) : null}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={saved ? 'Remove from my phrases' : 'Save to my phrases'}
+            accessibilityLabel={saved ? t('Remove from my phrases') : t('Save to my phrases')}
             hitSlop={10}
             onPress={() => toggleCard(phrase.en, phrase.it, pack.lang)}
           >
@@ -188,7 +191,7 @@ export default function LearnScreen() {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Practise saying it"
+            accessibilityLabel={t('Practise saying it')}
             hitSlop={10}
             onPress={() => setPracticeOpen(practiceOpen === key ? null : key)}
           >
@@ -198,7 +201,7 @@ export default function LearnScreen() {
         </View>
         <Text style={{ color: p.sub, fontSize: 14, marginTop: 2 }}>{phrase.en}</Text>
         {!covered ? <Text style={{ color: p.sub, fontSize: 12, marginTop: 1, fontStyle: 'italic' }}>{phrase.say}</Text> : null}
-        {copied === phrase.it ? <Text style={{ color: p.ok, fontSize: 11, marginTop: 2 }}>Copied</Text> : null}
+        {copied === phrase.it ? <Text style={{ color: p.ok, fontSize: 11, marginTop: 2 }}>{t('Copied')}</Text> : null}
         {!covered && expanded ? sayIt(key, phrase.it, pack.lang) : null}
       </Pressable>
     );
@@ -212,18 +215,19 @@ export default function LearnScreen() {
         </View>
       ) : null}
 
-      <Text style={{ color: p.text, fontSize: 20, fontWeight: '800' }}>Learn {pack.name}</Text>
+      <Text style={{ color: p.text, fontSize: 20, fontWeight: '800' }}>{t('Learn {name}', { name: langName(pack.lang) })}</Text>
       <Text style={{ color: p.sub, fontSize: 13, lineHeight: 20, marginTop: 4, marginBottom: 12 }}>{pack.intro}</Text>
+      {translating ? <Text style={{ color: p.sub, fontSize: 12, marginBottom: 10 }}>{t('Translating the explanations into your language…')}</Text> : null}
 
       <Choice
         value={section}
         onChange={(v) => setSection(v)}
         options={[
-          { value: 'phrases', label: 'Phrases' },
-          { value: 'review', label: due.length ? `Review · ${due.length}` : 'Review' },
-          { value: 'sounds', label: 'Sounds' },
-          { value: 'notes', label: 'Notes' },
-          { value: 'resources', label: 'Free courses' },
+          { value: 'phrases', label: t('Phrases') },
+          { value: 'review', label: due.length ? t('Review · {length}', { length: due.length }) : t('Review') },
+          { value: 'sounds', label: t('Sounds') },
+          { value: 'notes', label: t('Notes') },
+          { value: 'resources', label: t('Free courses') },
         ]}
       />
       <View style={{ height: 12 }} />
@@ -233,7 +237,7 @@ export default function LearnScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search the phrasebook"
+            placeholder={t('Search the phrasebook')}
             placeholderTextColor={p.sub}
             style={[styles.input, { color: p.text, borderColor: p.line, backgroundColor: p.card, marginBottom: 10 }]}
           />
@@ -241,14 +245,14 @@ export default function LearnScreen() {
             <Btn
               small
               kind={hide ? 'warm' : 'ghost'}
-              label={hide ? 'Practice on' : 'Practice'}
+              label={hide ? t('Practice on') : t('Practice')}
               onPress={() => {
                 setHide(!hide);
                 setRevealed({});
               }}
             />
             <Text style={{ color: p.sub, fontSize: 12, flex: 1 }}>
-              {hide ? 'Read the English, then tap to check yourself.' : 'Tap to hear it, 🎤 to practise saying it, ☆ to save it for review, hold to copy.'}
+              {hide ? t('Read the English, then tap to check yourself.') : t('Tap to hear it, 🎤 to practise saying it, ☆ to save it for review, hold to copy.')}
             </Text>
           </View>
 
@@ -256,7 +260,7 @@ export default function LearnScreen() {
             <Card>
               <Label>{hits.length} match{hits.length === 1 ? '' : 'es'}</Label>
               {hits.map((h, i) => renderPhrase(h.phrase, `q${i}`))}
-              {!hits.length ? <Text style={{ color: p.sub, fontSize: 14 }}>Nothing found.</Text> : null}
+              {!hits.length ? <Text style={{ color: p.sub, fontSize: 14 }}>{t('Nothing found.')}</Text> : null}
             </Card>
           ) : (
             pack.topics.map((topic) => {
@@ -290,9 +294,9 @@ export default function LearnScreen() {
         <>
           {current ? (
             <Card>
-              <Label>{due.length} to review</Label>
+              <Label>{t('{length} to review', { length: due.length })}</Label>
               <Text style={{ color: p.text, fontSize: 19, fontWeight: '700', marginTop: 4 }}>{current.front}</Text>
-              <Text style={{ color: p.sub, fontSize: 13, marginTop: 4 }}>Say it in {langName(current.lang)}, then check.</Text>
+              <Text style={{ color: p.sub, fontSize: 13, marginTop: 4 }}>{t('Say it in {lang}, then check.', { lang: langName(current.lang) })}</Text>
               {showAnswer ? (
                 <>
                   <Pressable
@@ -310,7 +314,7 @@ export default function LearnScreen() {
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
                     <Btn
                       kind="ghost"
-                      label="Forgot"
+                      label={t('Forgot')}
                       style={{ flex: 1 }}
                       onPress={() => {
                         finishPractice();
@@ -319,7 +323,7 @@ export default function LearnScreen() {
                       }}
                     />
                     <Btn
-                      label="Remembered"
+                      label={t('Remembered')}
                       style={{ flex: 1 }}
                       onPress={() => {
                         finishPractice();
@@ -331,7 +335,7 @@ export default function LearnScreen() {
                 </>
               ) : (
                 <Btn
-                  label="Show answer"
+                  label={t('Show answer')}
                   style={{ marginTop: 14 }}
                   onPress={() => {
                     setShowAnswer(true);
@@ -343,21 +347,19 @@ export default function LearnScreen() {
             </Card>
           ) : (
             <Card>
-              <Label>Review</Label>
+              <Label>{t('Review')}</Label>
               <Text style={{ color: p.text, fontSize: 15, lineHeight: 22 }}>
-                {mine.length ? `All done for now. The next phrase comes back ${when(nextDue)}.` : 'Nothing saved yet.'}
+                {mine.length ? t('All done for now. The next phrase comes back {when}.', { when: when(nextDue) }) : t('Nothing saved yet.')}
               </Text>
               <Text style={{ color: p.sub, fontSize: 13, lineHeight: 20, marginTop: 6 }}>
-                Save phrases with ☆ in the phrasebook, with Save in the Translate tab, or by holding a line in Captions.
-                Each one comes back a day later, then after 3, 7, 14, 30 and 90 days while you keep remembering it, and
-                sooner when you forget it.
+                {t('Save phrases with ☆ in the phrasebook, with Save in the Translate tab, or by holding a line in Captions. Each one comes back a day later, then after 3, 7, 14, 30 and 90 days while you keep remembering it, and sooner when you forget it.')}
               </Text>
             </Card>
           )}
 
           {mine.length ? (
             <Card>
-              <Label>My phrases · {mine.length}</Label>
+              <Label>{t('My phrases · {length}', { length: mine.length })}</Label>
               {mine.map((c) => (
                 <View
                   key={c.id}
@@ -374,10 +376,10 @@ export default function LearnScreen() {
                     <Text style={{ color: p.text, fontSize: 15, fontWeight: '700' }}>{c.back}</Text>
                     <Text style={{ color: p.sub, fontSize: 13 }}>{c.front}</Text>
                     <Text style={{ color: p.sub, fontSize: 11, marginTop: 2 }}>
-                      {c.due <= now ? 'Due now' : `Next ${when(c.due)}`} · step {c.box} of 6
+                      {c.due <= now ? t('Due now') : t('Next {when}', { when: when(c.due) })} · {t('step {step} of 6', { step: c.box })}
                     </Text>
                   </Pressable>
-                  <Btn small kind="ghost" label="Remove" onPress={() => deleteCard(c.id)} />
+                  <Btn small kind="ghost" label={t('Remove')} onPress={() => deleteCard(c.id)} />
                 </View>
               ))}
             </Card>
@@ -387,7 +389,7 @@ export default function LearnScreen() {
 
       {section === 'sounds' ? (
         <Card>
-          <Label>How {pack.name} is pronounced</Label>
+          <Label>{t('How {name} is pronounced', { name: langName(pack.lang) })}</Label>
           {pack.sounds.map((sound, i) => (
             <View key={i} style={{ paddingVertical: 8, borderBottomWidth: 1, borderColor: p.line }}>
               <Text style={{ color: p.text, fontSize: 15, fontWeight: '700' }}>
@@ -413,7 +415,7 @@ export default function LearnScreen() {
       {section === 'resources' ? (
         <>
           <Text style={{ color: p.sub, fontSize: 12, marginBottom: 10, lineHeight: 18 }}>
-            Checked for cost, not endorsed. Opening one leaves the app.
+            {t('Checked for cost, not endorsed. Opening one leaves the app.')}
           </Text>
           {pack.resources.map((r, i) => (
             <Card key={i}>
@@ -426,7 +428,7 @@ export default function LearnScreen() {
                 small
                 kind="ghost"
                 style={{ alignSelf: 'flex-start', marginTop: 8 }}
-                label="Open"
+                label={t('Open')}
                 onPress={() => Linking.openURL(r.url).catch(() => {})}
               />
             </Card>

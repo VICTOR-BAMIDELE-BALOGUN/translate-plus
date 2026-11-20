@@ -13,6 +13,7 @@ import { useListener } from '../services/listen';
 import { langName } from '../languages';
 import RecapSheet from '../components/RecapSheet';
 import type { Entry } from '../services/recap';
+import { t } from '../i18n/t';
 
 type Side = 'me' | 'them';
 type Half = { lines: string[]; pending: string; heard: string };
@@ -85,7 +86,7 @@ export default function TalkScreen() {
       if (s.autoSpeak) speak(out.text, to);
     } catch (e) {
       setHalf(reader, (v) => ({ ...v, pending: '' }));
-      setError(e instanceof Error ? e.message : 'Translation failed');
+      setError(e instanceof Error ? e.message : t('Translation failed'));
     }
   };
 
@@ -122,12 +123,12 @@ export default function TalkScreen() {
       <View style={{ flex: 1, padding: 16, transform: side === 'them' ? [{ rotate: '180deg' }] : [] }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <LangButton
-            caption={side === 'me' ? 'I speak' : 'They speak'}
+            caption={side === 'me' ? t('I speak') : t('They speak')}
             code={lang}
             onChange={(c) => updateSettings(side === 'me' ? { myLang: c } : { targetLang: c })}
           />
-          {data.lines.length ? <Btn small kind="ghost" label="Clear" onPress={clearAll} /> : null}
-          {side === 'me' && transcript.length ? <Btn small kind="ghost" label="Recap" onPress={() => setRecapOpen(true)} /> : null}
+          {data.lines.length ? <Btn small kind="ghost" label={t('Clear')} onPress={clearAll} /> : null}
+          {side === 'me' && transcript.length ? <Btn small kind="ghost" label={t('Recap')} onPress={() => setRecapOpen(true)} /> : null}
         </View>
 
         <ScrollView
@@ -164,12 +165,12 @@ export default function TalkScreen() {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={on ? 'Stop listening' : `Speak ${langName(lang)}`}
+          accessibilityLabel={on ? t('Stop listening') : t('Speak {lang}', { lang: langName(lang) })}
           onPress={() => toggle(side)}
           style={{ alignSelf: 'center', paddingVertical: 16, paddingHorizontal: 28, borderRadius: 999, backgroundColor: on ? p.warm : p.accent }}
         >
           <Text style={{ color: on ? '#1A1206' : p.accentText, fontWeight: '800', fontSize: 16 }}>
-            {on ? 'Listening… tap to stop' : `Tap to speak ${langName(lang)}`}
+            {on ? t('Listening… tap to stop') : t('Tap to speak {lang}', { lang: langName(lang) })}
           </Text>
         </Pressable>
       </View>
@@ -178,7 +179,7 @@ export default function TalkScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <RecapSheet visible={recapOpen} title="Face to Face conversation" entries={transcript} onClose={() => setRecapOpen(false)} />
+      <RecapSheet visible={recapOpen} title={t('Face to Face conversation')} entries={transcript} onClose={() => setRecapOpen(false)} />
       {renderHalf('them')}
       <View style={{ height: 2, backgroundColor: p.line }} />
       {error || mic.error ? <View style={{ paddingHorizontal: 16 }}><ErrorText>{error || mic.error}</ErrorText></View> : null}

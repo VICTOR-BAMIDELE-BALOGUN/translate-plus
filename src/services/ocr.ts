@@ -1,6 +1,7 @@
 // Reading text out of a photo, on the phone, with Google ML Kit.
 // The browser build uses ocr.web.ts instead, which Metro picks automatically.
 import TextRecognition, { TextRecognitionScript } from '@react-native-ml-kit/text-recognition';
+import { t } from '../i18n/t';
 
 // ML Kit reads these five scripts; a language outside them cannot be read on the phone.
 const SCRIPTS: Record<string, TextRecognitionScript> = {
@@ -38,7 +39,7 @@ export async function readTextFromImage(
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Could not read the photo.';
     if (message.includes("doesn't seem to be linked")) {
-      throw new Error('Reading photos is not available in this build of the app.');
+      throw new Error(t('Reading photos is not available in this build of the app.'));
     }
     throw new Error(message);
   }

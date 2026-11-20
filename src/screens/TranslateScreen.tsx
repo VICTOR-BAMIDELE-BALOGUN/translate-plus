@@ -11,6 +11,7 @@ import { useListener } from '../services/listen';
 import { langName } from '../languages';
 import { hasRegister, type Detected } from '../services/register';
 import { detect } from '../services/detect';
+import { t } from '../i18n/t';
 
 export default function TranslateScreen({ shared }: { shared?: { text: string; n: number } | null }) {
   const p = usePalette();
@@ -87,7 +88,7 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
         setFixedRegister(!!out.registerCorrected);
         setError(null);
       } catch (e) {
-        if (mine === seq.current) setError(e instanceof Error ? e.message : 'Translation failed');
+        if (mine === seq.current) setError(e instanceof Error ? e.message : t('Translation failed'));
       } finally {
         if (mine === seq.current) setBusy(false);
       }
@@ -128,10 +129,10 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
       <Label>
         {from === 'auto'
           ? mixed.length > 1
-            ? `Detected: ${mixed.map(langName).join(' + ')}`
+            ? t('Detected: {lang}', { lang: mixed.map(langName).join(' + ') })
             : detected && text.trim()
-            ? `Detected: ${langName(detected)}`
-            : 'Detect language'
+            ? t('Detected: {lang}', { lang: langName(detected) })
+            : t('Detect language')
           : langName(from)}
       </Label>
       <TextInput
@@ -140,15 +141,15 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
           setText(t);
           base.current = t;
         }}
-        placeholder="Type or tap the mic and speak"
+        placeholder={t('Type or tap the mic and speak')}
         placeholderTextColor={p.sub}
         multiline
         scrollEnabled
         style={{ color: p.text, fontSize: 17, flex: 1, textAlignVertical: 'top', minHeight: 60 }}
       />
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-        <Btn small kind={mic.listening ? 'warm' : 'primary'} label={mic.listening ? 'Stop' : 'Speak'} onPress={toggleMic} />
-        <Btn small kind="ghost" label="Clear" onPress={clearAll} disabled={!text} />
+        <Btn small kind={mic.listening ? 'warm' : 'primary'} label={mic.listening ? t('Stop') : t('Speak')} onPress={toggleMic} />
+        <Btn small kind="ghost" label={t('Clear')} onPress={clearAll} disabled={!text} />
       </View>
       <ErrorText>{mic.error}</ErrorText>
     </Card>
@@ -158,9 +159,9 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
     <Card style={{ flex: 1, backgroundColor: p.cardAlt, marginBottom: 0, marginLeft: sideBySide ? 5 : 0 }}>
       <Label>
         {langName(to)}
-        {busy ? ' · translating…' : offline && result ? ' · on device' : ''}
+        {busy ? t(' · translating…') : offline && result ? t(' · on device') : ''}
         {!busy && result && gotRegister && gotRegister !== 'unknown'
-          ? ` · ${gotRegister === 'formal' ? 'formal' : 'informal'}${fixedRegister ? ' (adjusted)' : ''}`
+          ? ` · ${gotRegister === 'formal' ? t('formal') : t('informal')}${fixedRegister ? ' ' + t('(adjusted)') : ''}`
           : ''}
       </Label>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 4 }}>
@@ -168,11 +169,11 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
         <ErrorText>{error}</ErrorText>
       </ScrollView>
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-        <Btn small label="Listen" disabled={!result} onPress={() => { stopSpeaking(); speak(result, to); save(); }} />
+        <Btn small label={t('Listen')} disabled={!result} onPress={() => { stopSpeaking(); speak(result, to); save(); }} />
         <Btn
           small
           kind="ghost"
-          label={copied ? 'Copied' : 'Copy'}
+          label={copied ? t('Copied') : t('Copy')}
           disabled={!result}
           onPress={async () => {
             await Clipboard.setStringAsync(result);
@@ -184,12 +185,12 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
         <Btn
           small
           kind="ghost"
-          label={result && (isSaved(cards, result, to) || isSaved(cards, text, detected || from)) ? '★ Saved' : '☆ Save'}
+          label={result && (isSaved(cards, result, to) || isSaved(cards, text, detected || from)) ? t('★ Saved') : t('☆ Save')}
           disabled={!result || busy}
           onPress={() => {
             const ok = saveCard(text, from === 'auto' ? detected || 'auto' : from, result, to);
             save();
-            setSaveNote(ok ? 'Saved to Learn → Review.' : 'Already saved, or both sides are in your own language.');
+            setSaveNote(ok ? t('Saved to Learn → Review.') : t('Already saved, or both sides are in your own language.'));
             setTimeout(() => setSaveNote(null), 2500);
           }}
         />
@@ -201,9 +202,9 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
   return (
     <View style={{ flex: 1, padding: 16, paddingTop: 8 }}>
       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-        <LangButton caption="From" code={from} onChange={setFrom} allowAuto />
+        <LangButton caption={t('From')} code={from} onChange={setFrom} allowAuto />
         <Btn small kind="ghost" label="⇄" onPress={swap} />
-        <LangButton caption="To" code={to} onChange={(c) => {
+        <LangButton caption={t('To')} code={to} onChange={(c) => {
             setSharedTo(null);
             updateSettings({ targetLang: c });
           }}
@@ -216,9 +217,9 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
             value={settings.register}
             onChange={(v) => updateSettings({ register: v })}
             options={[
-              { value: 'auto', label: 'Auto' },
-              { value: 'formal', label: 'Formal' },
-              { value: 'informal', label: 'Informal' },
+              { value: 'auto', label: t('Auto') },
+              { value: 'formal', label: t('Formal') },
+              { value: 'informal', label: t('Informal') },
             ]}
           />
         ) : (
@@ -228,14 +229,14 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
           value={settings.paneLayout}
           onChange={(v) => updateSettings({ paneLayout: v })}
           options={[
-            { value: 'stacked', label: 'Stacked' },
-            { value: 'side', label: 'Side by side' },
+            { value: 'stacked', label: t('Stacked') },
+            { value: 'side', label: t('Side by side') },
           ]}
         />
       </View>
       {settings.paneLayout === 'side' && !sideBySide ? (
         <Text style={{ color: p.sub, fontSize: 12, marginBottom: 8 }}>
-          Not enough width for two columns — turn the phone sideways, or use a bigger screen.
+          {t('Not enough width for two columns — turn the phone sideways, or use a bigger screen.')}
         </Text>
       ) : null}
 
@@ -245,17 +246,13 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
       </View>
 
       {from === 'auto' && mic.listening ? (
-        <Text style={{ color: p.sub, fontSize: 12, marginTop: 6 }}>
-          Mic listens in {langName(settings.myLang)}. Pick a "From" language to dictate another one.
-        </Text>
+        <Text style={{ color: p.sub, fontSize: 12, marginTop: 6 }}>{t('Mic listens in {lang}. Pick a "From" language to dictate another one.', { lang: langName(settings.myLang) })}</Text>
       ) : null}
 
       {history.length > 0 ? (
         <View style={{ marginTop: 10 }}>
           <Pressable accessibilityRole="button" onPress={() => setShowHistory(!showHistory)}>
-            <Text style={{ color: p.sub, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }}>
-              Recent ({history.length}) {showHistory ? '▾' : '▸'}
-            </Text>
+            <Text style={{ color: p.sub, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }}>{t('Recent ({length}) {n}', { length: history.length, n: showHistory ? '▾' : '▸' })}</Text>
           </Pressable>
           {showHistory ? (
             <ScrollView style={{ maxHeight: 150, marginTop: 8 }}>

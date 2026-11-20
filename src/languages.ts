@@ -1,3 +1,5 @@
+import { t } from './i18n/t';
+
 export type Lang = { code: string; name: string; speech: string };
 
 // code = translation code, speech = BCP-47 locale for speech recognition and text-to-speech
@@ -75,8 +77,9 @@ export function langByCode(code: string): Lang {
   );
 }
 
+/** A language's name, in the app's own language. */
 export function langName(code: string): string {
-  return langByCode(code).name;
+  return t(langByCode(code).name);
 }
 
 /**

@@ -4,6 +4,7 @@ import { chooseRoute, translate as onlineTranslate, type TranslateResult } from 
 import { offlineAvailable, offlineSupported, offlineTranslate } from './offline';
 import { canCorrect, correctItalian, detectRegister, hasRegister, steerSource, type Detected } from './register';
 import { segmentByLanguage } from './detect';
+import { t } from '../i18n/t';
 
 export type SmartResult = TranslateResult & {
   offline?: boolean;
@@ -79,7 +80,7 @@ async function translateOne(text: string, from: string, to: string): Promise<Sma
     try {
       return { text: await offlineTranslate(text, from, to), detected: from, provider: 'none', offline: true };
     } catch {
-      if (s.translationMode === 'offlineOnly') throw new Error('Offline translation failed for part of this text.');
+      if (s.translationMode === 'offlineOnly') throw new Error(t('Offline translation failed for part of this text.'));
     }
   }
   return onlineTranslate(text, from, to, s.provider);
@@ -104,7 +105,7 @@ export async function translate(text: string, from: string, to: string): Promise
     } catch (e) {
       if (s.translationMode === 'offlineOnly') {
         throw new Error(
-          `Offline translation failed: ${e instanceof Error ? e.message : 'unknown error'}. Re-download the language in Settings, or switch to online.`
+          t('Offline translation failed: {n}. Re-download the language in Settings, or switch to online.', { n: e instanceof Error ? e.message : 'unknown error' })
         );
       }
       // offlineFirst: fall through to the online services

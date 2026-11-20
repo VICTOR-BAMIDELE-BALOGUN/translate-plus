@@ -1,5 +1,6 @@
 // Free translation with two keyless providers, a small cache and timeouts.
 // Primary: Google's public web endpoint (unofficial, no key). Fallback: MyMemory (official free tier).
+import { t } from '../i18n/t';
 
 export type TranslateResult = { text: string; detected?: string; provider: 'google' | 'mymemory' | 'none' };
 export type Provider = 'google' | 'mymemory';
@@ -30,7 +31,7 @@ export function parseGoogle(data: any): TranslateResult {
 export function parseMyMemory(data: any): TranslateResult {
   const text = data?.responseData?.translatedText;
   if (typeof text !== 'string' || !text || Number(data?.responseStatus) >= 400) {
-    throw new Error(typeof data?.responseDetails === 'string' && data.responseDetails ? data.responseDetails : 'Translation failed');
+    throw new Error(typeof data?.responseDetails === 'string' && data.responseDetails ? data.responseDetails : t('Translation failed'));
   }
   const detected = data?.responseData?.detectedLanguage;
   return { text, detected: typeof detected === 'string' ? detected : undefined, provider: 'mymemory' };
@@ -98,7 +99,7 @@ export async function translate(text: string, from: string, to: string, prefer: 
       lastError = e;
     }
   }
-  throw new Error(`Translation unavailable. Check your connection. (${lastError instanceof Error ? lastError.message : 'error'})`);
+  throw new Error(t('Translation unavailable. Check your connection. ({n})', { n: lastError instanceof Error ? lastError.message : 'error' }));
 }
 
 /**
@@ -112,6 +113,27 @@ export function warmUp(to: string) {
   fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl=${encodeURIComponent(to)}&q=${q}`, { signal: ctrl.signal }).catch(() => {});
   if (typeof document === 'undefined') {
     fetch(`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(to)}&q=ok`, { signal: ctrl.signal }).catch(() => {});
+  }
+}
+
+/**
+ * Translates a large block of text in one request (POST, so it can be long), from English.
+ * Used to translate the app's own interface into languages that are not built in.
+ */
+export async function translateBatch(text: string, to: string): Promise<string> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl=${encodeURIComponent(to)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: 'q=' + encodeURIComponent(text),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return parseGoogle(await res.json()).text;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

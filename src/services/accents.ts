@@ -5,69 +5,71 @@
 // What this cannot do is make a model for a language-and-accent pair that nobody
 // trained — there is no "Italian as spoken by a Nigerian" recogniser. The UI says so.
 
+import { tk } from '../i18n/t';
+
 export type Variant = { code: string; label: string };
 
 // Curated regional variants, most useful first. Codes are BCP-47, which is what
 // both Android's recogniser and the browser's Web Speech API expect.
 const VARIANTS: Record<string, Variant[]> = {
   en: [
-    { code: 'en-US', label: 'United States' },
-    { code: 'en-GB', label: 'United Kingdom' },
-    { code: 'en-NG', label: 'Nigeria' },
-    { code: 'en-GH', label: 'Ghana' },
-    { code: 'en-KE', label: 'Kenya' },
-    { code: 'en-ZA', label: 'South Africa' },
-    { code: 'en-IN', label: 'India' },
-    { code: 'en-IE', label: 'Ireland' },
-    { code: 'en-AU', label: 'Australia' },
-    { code: 'en-CA', label: 'Canada' },
-    { code: 'en-PH', label: 'Philippines' },
-    { code: 'en-SG', label: 'Singapore' },
+    { code: 'en-US', label: tk('United States') },
+    { code: 'en-GB', label: tk('United Kingdom') },
+    { code: 'en-NG', label: tk('Nigeria') },
+    { code: 'en-GH', label: tk('Ghana') },
+    { code: 'en-KE', label: tk('Kenya') },
+    { code: 'en-ZA', label: tk('South Africa') },
+    { code: 'en-IN', label: tk('India') },
+    { code: 'en-IE', label: tk('Ireland') },
+    { code: 'en-AU', label: tk('Australia') },
+    { code: 'en-CA', label: tk('Canada') },
+    { code: 'en-PH', label: tk('Philippines') },
+    { code: 'en-SG', label: tk('Singapore') },
   ],
   it: [
-    { code: 'it-IT', label: 'Italy' },
-    { code: 'it-CH', label: 'Switzerland' },
+    { code: 'it-IT', label: tk('Italy') },
+    { code: 'it-CH', label: tk('Switzerland') },
   ],
   de: [
-    { code: 'de-DE', label: 'Germany' },
-    { code: 'de-AT', label: 'Austria' },
-    { code: 'de-CH', label: 'Switzerland' },
+    { code: 'de-DE', label: tk('Germany') },
+    { code: 'de-AT', label: tk('Austria') },
+    { code: 'de-CH', label: tk('Switzerland') },
   ],
   fr: [
-    { code: 'fr-FR', label: 'France' },
-    { code: 'fr-CA', label: 'Canada' },
-    { code: 'fr-BE', label: 'Belgium' },
-    { code: 'fr-CH', label: 'Switzerland' },
+    { code: 'fr-FR', label: tk('France') },
+    { code: 'fr-CA', label: tk('Canada') },
+    { code: 'fr-BE', label: tk('Belgium') },
+    { code: 'fr-CH', label: tk('Switzerland') },
   ],
   es: [
-    { code: 'es-ES', label: 'Spain' },
-    { code: 'es-MX', label: 'Mexico' },
-    { code: 'es-AR', label: 'Argentina' },
-    { code: 'es-CO', label: 'Colombia' },
-    { code: 'es-US', label: 'United States' },
+    { code: 'es-ES', label: tk('Spain') },
+    { code: 'es-MX', label: tk('Mexico') },
+    { code: 'es-AR', label: tk('Argentina') },
+    { code: 'es-CO', label: tk('Colombia') },
+    { code: 'es-US', label: tk('United States') },
   ],
   pt: [
-    { code: 'pt-PT', label: 'Portugal' },
-    { code: 'pt-BR', label: 'Brazil' },
+    { code: 'pt-PT', label: tk('Portugal') },
+    { code: 'pt-BR', label: tk('Brazil') },
   ],
   ar: [
-    { code: 'ar-SA', label: 'Saudi Arabia' },
-    { code: 'ar-EG', label: 'Egypt' },
-    { code: 'ar-MA', label: 'Morocco' },
-    { code: 'ar-AE', label: 'United Arab Emirates' },
+    { code: 'ar-SA', label: tk('Saudi Arabia') },
+    { code: 'ar-EG', label: tk('Egypt') },
+    { code: 'ar-MA', label: tk('Morocco') },
+    { code: 'ar-AE', label: tk('United Arab Emirates') },
   ],
   nl: [
-    { code: 'nl-NL', label: 'Netherlands' },
-    { code: 'nl-BE', label: 'Belgium' },
+    { code: 'nl-NL', label: tk('Netherlands') },
+    { code: 'nl-BE', label: tk('Belgium') },
   ],
   sw: [
-    { code: 'sw-KE', label: 'Kenya' },
-    { code: 'sw-TZ', label: 'Tanzania' },
+    { code: 'sw-KE', label: tk('Kenya') },
+    { code: 'sw-TZ', label: tk('Tanzania') },
   ],
-  'zh-CN': [{ code: 'zh-CN', label: 'Mainland, Mandarin' }],
+  'zh-CN': [{ code: 'zh-CN', label: tk('Mainland, Mandarin') }],
   'zh-TW': [
-    { code: 'zh-TW', label: 'Taiwan' },
-    { code: 'zh-HK', label: 'Hong Kong' },
+    { code: 'zh-TW', label: tk('Taiwan') },
+    { code: 'zh-HK', label: tk('Hong Kong') },
   ],
 };
 

@@ -7,6 +7,7 @@ import { File, Paths } from 'expo-file-system';
 import { getSettings } from '../store';
 import { speechLocaleFor } from '../languages';
 import { synthesize } from './fish';
+import { t } from '../i18n/t';
 
 let chain: Promise<void> = Promise.resolve();
 let pending = 0;
@@ -199,9 +200,9 @@ async function googleClip(piece: string, lang: string): Promise<{ audio?: ArrayB
       'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob' +
       `&tl=${encodeURIComponent(lang)}&q=${encodeURIComponent(piece)}`;
     const res = await fetch(url, { signal: ctrl.signal });
-    if (!res.ok) throw new Error(`Google voice error ${res.status}`);
+    if (!res.ok) throw new Error(t('Google voice error {status}', { status: res.status }));
     const audio = await res.arrayBuffer();
-    if (audio.byteLength < 200) throw new Error('Google voice returned no audio');
+    if (audio.byteLength < 200) throw new Error(t('Google voice returned no audio'));
     return { audio, file };
   } finally {
     clearTimeout(timer);

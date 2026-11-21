@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { Btn, Card, Choice, ErrorText, Label, LangButton, styles } from '../components/ui';
+import { Badge, Btn, Card, Choice, ErrorText, Label, LangButton, styles, surface } from '../components/ui';
 import { usePalette } from '../theme';
 import { addHistory, saveCard, updateSettings, useStore } from '../store';
 import { isSaved } from '../learn/review';
@@ -11,7 +11,32 @@ import { useListener } from '../services/listen';
 import { langName } from '../languages';
 import { hasRegister, type Detected } from '../services/register';
 import { detect } from '../services/detect';
-import { t } from '../i18n/t';
+import { t, tk } from '../i18n/t';
+
+// shown before anything is typed: tapping one translates it straight away
+const STARTERS = [
+  tk('Could you recommend a quiet place for dinner?'),
+  tk('Where is the nearest pharmacy?'),
+  tk('How much does this cost?'),
+  tk('Could you speak a little more slowly, please?'),
+  tk('I have a reservation under this name.'),
+  tk('Which bus goes to the city centre?'),
+];
+
+const TIPS = [
+  tk('Short, complete sentences translate more accurately than long ones.'),
+  tk('Choose Formal when you speak to officials, landlords or people you do not know.'),
+  tk('Tap ⇄ to swap languages and read the reply in your own language.'),
+  tk('Tap Listen, then repeat after the voice to practise the pronunciation.'),
+  tk('Save a phrase with ☆ and it comes back in Learn → Review until you know it.'),
+  tk('Check numbers, dates and names twice before you rely on a translation.'),
+];
+
+/** A different tip each day. */
+function tipOfTheDay(): string {
+  const day = Math.floor(Date.now() / 86_400_000);
+  return TIPS[day % TIPS.length];
+}
 
 export default function TranslateScreen({ shared }: { shared?: { text: string; n: number } | null }) {
   const p = usePalette();
@@ -125,7 +150,8 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
   };
 
   const sourcePane = (
-    <Card style={{ flex: 1, marginBottom: sideBySide ? 0 : 10, marginRight: sideBySide ? 5 : 0 }}>
+    // before anything is typed the input is smaller, leaving room for the phrase ideas
+    <Card style={{ flex: !sideBySide && !text.trim() && !result ? 0.62 : 1, marginBottom: sideBySide ? 0 : 10, marginRight: sideBySide ? 5 : 0 }}>
       <Label>
         {from === 'auto'
           ? mixed.length > 1
@@ -156,14 +182,20 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
   );
 
   const resultPane = (
-    <Card style={{ flex: 1, backgroundColor: p.cardAlt, marginBottom: 0, marginLeft: sideBySide ? 5 : 0 }}>
-      <Label>
-        {langName(to)}
-        {busy ? t(' · translating…') : offline && result ? t(' · on device') : ''}
-        {!busy && result && gotRegister && gotRegister !== 'unknown'
-          ? ` · ${gotRegister === 'formal' ? t('formal') : t('informal')}${fixedRegister ? ' ' + t('(adjusted)') : ''}`
-          : ''}
-      </Label>
+    <Card reading style={{ flex: 1, marginBottom: 0, marginLeft: sideBySide ? 5 : 0 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+        <Text style={{ color: p.accent, fontSize: 12, fontWeight: '800', letterSpacing: 0.9, textTransform: 'uppercase', marginRight: 2 }}>
+          {langName(to)}
+        </Text>
+        {busy ? <Badge tone="muted" label={t('translating…')} /> : null}
+        {!busy && offline && result ? <Badge tone="muted" label={t('on device')} /> : null}
+        {!busy && result && gotRegister && gotRegister !== 'unknown' ? (
+          <Badge
+            tone="ok"
+            label={(gotRegister === 'formal' ? t('Polite, formal phrasing') : t('Friendly, informal phrasing')) + (fixedRegister ? ' ' + t('(adjusted)') : '')}
+          />
+        ) : null}
+      </View>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 4 }}>
         <Text selectable style={{ color: p.text, fontSize: 19, lineHeight: 27 }}>{result}</Text>
         <ErrorText>{error}</ErrorText>
@@ -197,6 +229,53 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
       </View>
       {saveNote ? <Text style={{ color: p.sub, fontSize: 12, marginTop: 6 }}>{saveNote}</Text> : null}
     </Card>
+  );
+
+  const starters = (
+    <View style={[{ flex: 1, marginLeft: sideBySide ? 5 : 0, overflow: 'hidden' }, surface(p)]}>
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <Text accessibilityRole="header" style={{ color: p.text, fontSize: 22, fontWeight: '900', letterSpacing: -0.3 }}>
+          {t('Say it with confidence.')}
+        </Text>
+        <Text style={{ color: p.sub, fontSize: 14, marginTop: 4, lineHeight: 20 }}>
+          {t('Type, speak, or tap a phrase to hear it in {lang}.', { lang: langName(to) })}
+        </Text>
+
+        <Text style={{ color: p.sub, fontSize: 12, fontWeight: '700', letterSpacing: 0.9, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 }}>
+          {t('Useful travel phrases')}
+        </Text>
+        {STARTERS.map((phrase) => (
+          <Pressable
+            key={phrase}
+            accessibilityRole="button"
+            accessibilityHint={t('Translates this phrase')}
+            onPress={() => {
+              setText(t(phrase));
+              base.current = t(phrase);
+            }}
+            style={({ pressed }) => ({
+              flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 6,
+              borderRadius: Math.max(10, p.radius - 8), borderWidth: p.border, borderColor: p.line,
+              backgroundColor: pressed ? p.card : p.cardAlt,
+            })}
+          >
+            <Text style={{ color: p.accent, fontSize: 16, fontWeight: '800' }}>›</Text>
+            <Text style={{ color: p.text, fontSize: 15, flex: 1 }}>{t(phrase)}</Text>
+          </Pressable>
+        ))}
+
+        <View
+          style={{
+            marginTop: 12, padding: 14, borderRadius: Math.max(10, p.radius - 6),
+            borderWidth: p.border, borderColor: p.accent2, backgroundColor: p.cardAlt,
+            borderLeftWidth: 4, borderLeftColor: p.accent2,
+          }}
+        >
+          <Text style={{ color: p.text, fontSize: 12, fontWeight: '800', letterSpacing: 0.9, textTransform: 'uppercase' }}>💡 {t('Language tip')}</Text>
+          <Text style={{ color: p.text, fontSize: 14, marginTop: 4, lineHeight: 20 }}>{t(tipOfTheDay())}</Text>
+        </View>
+      </ScrollView>
+    </View>
   );
 
   return (
@@ -242,7 +321,7 @@ export default function TranslateScreen({ shared }: { shared?: { text: string; n
 
       <View style={{ flex: 1, flexDirection: sideBySide ? 'row' : 'column' }}>
         {sourcePane}
-        {resultPane}
+        {text.trim() || result || error ? resultPane : starters}
       </View>
 
       {from === 'auto' && mic.listening ? (

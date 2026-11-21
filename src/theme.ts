@@ -2,7 +2,7 @@ import { useColorScheme } from 'react-native';
 import { useSettings } from './store';
 import { resolveTheme, type Palette } from './themes';
 
-export { THEMES, DEFAULT_THEME, normalizeThemeId, themeById, resolveTheme } from './themes';
+export { THEMES, DEFAULT_THEME, normalizeThemeId, themeById, resolveTheme, cssVariables } from './themes';
 export type { Palette, Theme } from './themes';
 
 export function usePalette(): Palette {

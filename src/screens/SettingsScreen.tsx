@@ -459,38 +459,62 @@ export default function SettingsScreen() {
           value={s.followSystem}
           onChange={(v) => updateSettings({ followSystem: v })}
         />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+        <View style={{ gap: 10, marginTop: 6 }}>
           {THEMES.map((th) => {
             const on = th.id === s.theme;
             return (
               <Pressable
                 key={th.id}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={t('{name} theme', { name: t(th.name) })}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on, checked: on }}
+                accessibilityLabel={t('{name} theme', { name: t(th.name) }) + '. ' + t(th.mood)}
                 onPress={() => updateSettings({ theme: th.id })}
-                style={{
-                  width: '48%',
-                  backgroundColor: th.bg,
-                  borderColor: on ? p.accent : th.line,
-                  borderWidth: on ? 2 : 1,
-                  borderRadius: 12,
-                  paddingVertical: 12,
-                  paddingHorizontal: 12,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                }}
+                style={({ pressed }) => [
+                  {
+                    borderRadius: th.radius,
+                    borderWidth: on ? 3 : th.border,
+                    borderColor: on ? p.accent : th.line,
+                    overflow: 'hidden',
+                    opacity: pressed ? 0.85 : 1,
+                    backgroundColor: th.bg,
+                  },
+                  {
+                    backgroundImage: [
+                      th.glowA !== 'transparent' ? `radial-gradient(circle at 10% 0%, ${th.glowA} 0%, transparent 60%)` : null,
+                      th.glowB !== 'transparent' ? `radial-gradient(circle at 100% 100%, ${th.glowB} 0%, transparent 60%)` : null,
+                      `linear-gradient(160deg, ${th.bg2} 0%, ${th.bg} 100%)`,
+                    ].filter(Boolean).join(', '),
+                  } as object,
+                ]}
               >
-                <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: th.accent }} />
-                <Text style={{ color: th.text, fontWeight: on ? '800' : '500', fontSize: 14, flex: 1 }}>{t(th.name)}</Text>
-                {on ? <Text style={{ color: p.accent, fontSize: 13, fontWeight: '800' }}>✓</Text> : null}
+                <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 }}>
+                  {/* a miniature card: surface, text lines and the accent button */}
+                  <View style={{ width: 64, padding: 7, gap: 4, borderRadius: Math.max(8, th.radius / 2), backgroundColor: th.card, borderWidth: th.border, borderColor: th.line }}>
+                    <View style={{ height: 5, width: '80%', borderRadius: 3, backgroundColor: th.text }} />
+                    <View style={{ height: 4, width: '55%', borderRadius: 2, backgroundColor: th.sub }} />
+                    <View style={{ height: 12, width: 30, borderRadius: 6, backgroundColor: th.accent, marginTop: 2 }} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: th.text, fontWeight: '800', fontSize: 16 }}>{t(th.name)}</Text>
+                    <Text style={{ color: th.sub, fontSize: 13, marginTop: 2 }}>{t(th.mood)}</Text>
+                    <View style={{ flexDirection: 'row', gap: 5, marginTop: 6 }}>
+                      {[th.accent, th.accent2, th.text].map((c, i) => (
+                        <View key={i} style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: c, borderWidth: 1, borderColor: th.line }} />
+                      ))}
+                    </View>
+                  </View>
+                  {on ? (
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: th.accent }}>
+                      <Text style={{ color: th.accentText, fontSize: 12, fontWeight: '800' }}>✓ {t('In use')}</Text>
+                    </View>
+                  ) : null}
+                </View>
               </Pressable>
             );
           })}
         </View>
         <Text style={{ color: p.sub, fontSize: 12, marginTop: 8, lineHeight: 18 }}>
-          {t('Ink and Paper are the highest-contrast pair, which helps in bright sunlight.')}
+          {t('Clear Contrast has solid surfaces and the strongest text, which helps in bright sunlight or with low vision.')}
         </Text>
 
         <View style={{ height: 10 }} />

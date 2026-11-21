@@ -5,7 +5,8 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import nacl from 'tweetnacl';
 import { loadStore, useStore, type Room } from './src/store';
-import { usePalette } from './src/theme';
+import { cssVariables, usePalette } from './src/theme';
+import { Ambient, raised } from './src/components/ui';
 import TranslateScreen from './src/screens/TranslateScreen';
 import TalkScreen from './src/screens/TalkScreen';
 import CaptionsScreen from './src/screens/CaptionsScreen';
@@ -74,7 +75,20 @@ function Shell() {
     document.body.style.backgroundColor = p.bg;
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', p.bg);
-  }, [p.bg]);
+    // the theme's tokens as CSS custom properties, plus keyboard focus and reduced motion
+    const root = document.documentElement;
+    for (const [k, v] of Object.entries(cssVariables(p))) root.style.setProperty(k, String(v));
+    let tag = document.getElementById('tp-theme');
+    if (!tag) {
+      tag = document.createElement('style');
+      tag.id = 'tp-theme';
+      tag.textContent =
+        '[role=button]:focus-visible,[role=tab]:focus-visible,[role=radio]:focus-visible,[role=switch]:focus-visible,input:focus-visible,textarea:focus-visible' +
+        '{outline:3px solid var(--tp-focus);outline-offset:2px}' +
+        '@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}';
+      document.head.appendChild(tag);
+    }
+  }, [p]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -125,6 +139,7 @@ function Shell() {
   if (invite) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
+        <Ambient />
         <StatusBar style={lightBar ? 'dark' : 'light'} />
         {languageBar}
         <GuestScreen key={ui.lang} invite={invite} />
@@ -134,6 +149,7 @@ function Shell() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
+      <Ambient />
       <StatusBar style={lightBar ? 'dark' : 'light'} />
       {tab === 'chats' && room ? (
         <RoomScreen key={room.code} room={room} onBack={() => setRoom(null)} />
@@ -141,10 +157,24 @@ function Shell() {
         <>
           {languageBar}
           <InstallBanner />
-          <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6, flexDirection: 'row', alignItems: 'baseline' }}>
-            <Text style={{ color: p.text, fontSize: 24, fontWeight: '900', letterSpacing: -0.5 }}>{t('Translate')}</Text>
-            <Text style={{ color: p.accent, fontSize: 24, fontWeight: '900' }}>+</Text>
-            <Text style={{ color: p.sub, fontSize: 13, marginLeft: 10 }}>{t(TABS.find((x) => x.id === tab)?.label ?? '')}</Text>
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View
+              style={[
+                {
+                  width: 34, height: 34, borderRadius: Math.min(12, p.radius / 2), alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: p.accent, borderWidth: p.border, borderColor: p.accent,
+                },
+                { backgroundImage: `linear-gradient(135deg, ${p.accent} 0%, ${p.accent2} 100%)` } as object,
+              ]}
+            >
+              <Text style={{ color: p.accentText, fontSize: 20, fontWeight: '900', marginTop: -2 }}>+</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text accessibilityRole="header" style={{ color: p.text, fontSize: 22, fontWeight: '900', letterSpacing: -0.4 }}>
+                {t('Translate')}<Text style={{ color: p.accent }}>+</Text>
+              </Text>
+              <Text style={{ color: p.sub, fontSize: 12, fontWeight: '600' }}>{t(TABS.find((x) => x.id === tab)?.label ?? '')}</Text>
+            </View>
           </View>
           <View key={ui.lang} style={{ flex: 1 }}>
             {tab === 'translate' ? <TranslateScreen shared={shared} /> : null}
@@ -155,7 +185,14 @@ function Shell() {
             {tab === 'chats' ? <ChatsScreen onOpen={setRoom} /> : null}
             {tab === 'settings' ? <SettingsScreen /> : null}
           </View>
-          <View style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: p.line, backgroundColor: p.card }}>
+          <View
+            accessibilityRole="tablist"
+            style={[
+              { flexDirection: 'row', marginHorizontal: 10, marginBottom: 8, marginTop: 4, padding: 4, gap: 2 },
+              { backgroundColor: p.nav, borderColor: p.line, borderWidth: p.border, borderRadius: p.radius + 2 },
+              raised(p),
+            ]}
+          >
             {TABS.map((tab_) => {
               const on = tab_.id === tab;
               return (
@@ -165,10 +202,19 @@ function Shell() {
                   accessibilityState={{ selected: on }}
                   accessibilityLabel={t(tab_.label)}
                   onPress={() => setTab(tab_.id)}
-                  style={{ flex: 1, alignItems: 'center', paddingVertical: 8, paddingHorizontal: 2 }}
+                  style={({ pressed }) => ({
+                    flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 54, paddingVertical: 6, paddingHorizontal: 1,
+                    borderRadius: Math.max(10, p.radius - 4),
+                    backgroundColor: on ? p.cardAlt : 'transparent',
+                    borderWidth: on ? p.border : 0,
+                    borderColor: on ? p.accent : 'transparent',
+                    opacity: pressed ? 0.75 : 1,
+                  })}
                 >
                   <Text style={{ color: on ? p.accent : p.sub, fontSize: 18, fontWeight: '800' }}>{tab_.glyph}</Text>
-                  <Text numberOfLines={1} style={{ color: on ? p.accent : p.sub, fontSize: 10, fontWeight: '700', marginTop: 2 }}>{t(tab_.label)}</Text>
+                  <Text numberOfLines={1} style={{ color: on ? p.text : p.sub, fontSize: 10, fontWeight: on ? '800' : '600', marginTop: 2 }}>{t(tab_.label)}</Text>
+                  {/* a bar under the active tab, so selection is not shown by colour alone */}
+                  <View style={{ height: 3, width: on ? 18 : 0, borderRadius: 2, backgroundColor: p.accent, marginTop: 3 }} />
                 </Pressable>
               );
             })}

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSyncExternalStore } from 'react';
 import { archiveSession, MAX_SESSION_LINES, type CaptionLine, type CaptionSession, type QuickPhrase } from './services/phonecall';
 import { addCard, cardSides, grade, isSaved, newCard, type Card } from './learn/review';
+import { normalizeThemeId } from './themes';
 
 export type ClonedVoice = { id: string; title: string };
 export type Settings = {
@@ -69,7 +70,7 @@ export const DEFAULT_SETTINGS: Settings = {
   register: 'auto',
   translationMode: 'offlineFirst',
   offlineLanguages: [],
-  theme: 'midnight',
+  theme: 'deep-blue-glass',
   followSystem: false,
   captionSize: 22,
   phoneCallMode: false,
@@ -154,11 +155,14 @@ export async function loadStore(): Promise<void> {
       ...state,
       settings: {
         ...state.settings,
-        theme: saved === 'light' ? 'daylight' : 'midnight',
+        theme: saved === 'light' ? 'daylight-glass' : 'deep-blue-glass',
         followSystem: saved === 'system',
       },
     };
   }
+  // themes from before the 1.2 redesign map onto the nearest new theme
+  const themeId = normalizeThemeId(state.settings.theme);
+  if (themeId !== state.settings.theme) state = { ...state, settings: { ...state.settings, theme: themeId } };
   if (!state.deviceId) state = { ...state, deviceId: newId() };
   state = { ...state, ready: true };
   emit();

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Modal, Platform, Share, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
-import { Btn, Card, Label, styles } from './ui';
+import { Btn, Card, Label, styles, Ambient } from './ui';
 import { usePalette } from '../theme';
 import { KIND_LABELS, buildRecap, extractDetails, type Entry } from '../services/recap';
 import { t } from '../i18n/t';
@@ -17,6 +17,7 @@ export default function RecapSheet(props: { visible: boolean; title: string; ent
   return (
     <Modal visible={props.visible} animationType="slide" onRequestClose={props.onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
+        <Ambient />
         <ScrollView contentContainerStyle={{ padding: 18 }}>
           <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 14 }}>{props.title}</Text>
 

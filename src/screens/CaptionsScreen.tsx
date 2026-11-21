@@ -8,7 +8,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
-import { Btn, Card, ErrorText, Label, LangButton, styles } from '../components/ui';
+import { Btn, Card, ErrorText, Label, LangButton, styles, Ambient } from '../components/ui';
 import { usePalette } from '../theme';
 import {
   deleteCaptionSession,
@@ -482,6 +482,7 @@ export default function CaptionsScreen() {
       {/* saved conversations */}
       <Modal visible={savedOpen} animationType="slide" onRequestClose={() => setSavedOpen(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
+          <Ambient />
           <ScrollView contentContainerStyle={{ padding: 18 }}>
             <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 4 }}>{t('Saved conversations')}</Text>
             <Text style={{ color: p.sub, fontSize: 13, marginBottom: 14 }}>{t('The last {length} are kept on this phone only.', { length: store.captionSessions.length })}</Text>
@@ -510,6 +511,7 @@ export default function CaptionsScreen() {
       {/* my own quick phrases */}
       <Modal visible={phrasesOpen} animationType="slide" onRequestClose={() => setPhrasesOpen(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
+          <Ambient />
           <ScrollView contentContainerStyle={{ padding: 18 }} keyboardShouldPersistTaps="handled">
             <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 4 }}>{t('My phrases')}</Text>
             <Text style={{ color: p.sub, fontSize: 13, marginBottom: 14, lineHeight: 19 }}>{t('Things you say on most calls — your name, address, a booking number. Write them in {lang}; one tap speaks them in the caller\'s language.', { lang: langName(s.myLang) })}</Text>
@@ -542,6 +544,7 @@ export default function CaptionsScreen() {
 
       <Modal visible={help} animationType="slide" onRequestClose={() => setHelp(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
+          <Ambient />
           <ScrollView contentContainerStyle={{ padding: 18 }}>
             <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 12 }}>{t('Captions on WhatsApp and other app calls')}</Text>
             <Card>

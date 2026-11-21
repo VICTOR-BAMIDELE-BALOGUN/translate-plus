@@ -173,30 +173,50 @@ test('photo reading covers the languages that matter here', () => {
   assert.equal(webOcrSupported('auto'), false);
 });
 
-test('themes: pairs, migration and matching the phone', () => {
-  assert.ok(THEMES.length >= 6, 'there should be several themes');
+test('themes: tokens, pairs, migration and matching the phone', () => {
+  assert.deepEqual(THEMES.map((t) => t.id), ['deep-blue-glass', 'aurora-glow', 'daylight-glass', 'clear-contrast']);
   const ids = new Set(THEMES.map((t) => t.id));
+  const colour = /^(#[0-9A-Fa-f]{6}|rgba\(\d+, \d+, \d+, (0|1|0?\.\d+)\)|transparent)$/;
   for (const t of THEMES) {
     assert.ok(ids.has(t.pair), `${t.id} pairs with a theme that does not exist`);
-    assert.notEqual(t.pair, t.id);
     assert.notEqual(themeById(t.pair).mode, t.mode, `${t.id} should pair with the opposite mode`);
-    for (const key of ['bg', 'card', 'text', 'sub', 'line', 'accent', 'accentText'])
-      assert.match(t[key], /^#[0-9A-Fa-f]{6}$/, `${t.id}.${key} is not a colour`);
+    for (const key of ['bg', 'bg2', 'card', 'cardAlt', 'text', 'sub', 'line', 'accent', 'accent2', 'accentText', 'nav', 'glowA', 'glowB', 'focus'])
+      assert.match(t[key], colour, `${t.id}.${key} is not a colour`);
+    // text must stay readable on the page and on accent buttons (WCAG AA: 4.5:1)
+    assert.ok(contrast(t.text, t.bg) >= 7, `${t.id}: text on background`);
+    assert.ok(contrast(t.sub, t.bg) >= 4.5, `${t.id}: secondary text on background`);
+    assert.ok(contrast(t.accentText, t.accent) >= 4.5, `${t.id}: text on accent`);
+    assert.ok(t.borderOn > t.border, `${t.id}: selected things need a heavier border`);
   }
+  // the high-contrast theme is solid: no glass, no glow
+  const clear = themeById('clear-contrast');
+  assert.equal(clear.blur, 0);
+  assert.equal(clear.glowA, 'transparent');
 
-  // settings saved before themes had names must still resolve
-  assert.equal(normalizeThemeId('dark'), 'midnight');
-  assert.equal(normalizeThemeId('light'), 'daylight');
-  assert.equal(normalizeThemeId('system'), 'midnight');
-  assert.equal(normalizeThemeId('nonsense'), 'midnight');
-  assert.equal(normalizeThemeId('ocean'), 'ocean');
+  // settings saved by earlier versions must still resolve
+  assert.equal(normalizeThemeId('dark'), 'deep-blue-glass');
+  assert.equal(normalizeThemeId('light'), 'daylight-glass');
+  assert.equal(normalizeThemeId('midnight'), 'deep-blue-glass');
+  assert.equal(normalizeThemeId('dusk'), 'aurora-glow');
+  assert.equal(normalizeThemeId('ink'), 'clear-contrast');
+  assert.equal(normalizeThemeId('nonsense'), 'deep-blue-glass');
+  assert.equal(normalizeThemeId('aurora-glow'), 'aurora-glow');
 
   // matching the phone swaps to the counterpart, and only then
-  assert.equal(resolveTheme('ocean', false, 'light').id, 'ocean');
-  assert.equal(resolveTheme('ocean', true, 'light').id, 'sky');
-  assert.equal(resolveTheme('ocean', true, 'dark').id, 'ocean');
-  assert.equal(resolveTheme('paper', true, 'dark').id, 'ink');
+  assert.equal(resolveTheme('aurora-glow', false, 'light').id, 'aurora-glow');
+  assert.equal(resolveTheme('aurora-glow', true, 'light').id, 'daylight-glass');
+  assert.equal(resolveTheme('aurora-glow', true, 'dark').id, 'aurora-glow');
+  assert.equal(resolveTheme('daylight-glass', true, 'dark').id, 'deep-blue-glass');
 });
+
+function luminance(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function contrast(a, b) {
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m);
+  return (x + 0.05) / (y + 0.05);
+}
 
 test('formality: reading the register out of a translation', () => {
   // the sentences that actually matter — writing to a landlord or an office

@@ -1,9 +1,64 @@
-import React, { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Switch, Text, TextInput, View, type ViewStyle } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  AccessibilityInfo, FlatList, Modal, Platform, Pressable, StyleSheet, Switch, Text, TextInput, View,
+  type PressableStateCallbackType, type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AUTO, LANGUAGES, langName, type Lang } from '../languages';
-import { usePalette } from '../theme';
+import { usePalette, type Palette } from '../theme';
 import { t } from '../i18n/t';
+
+// react-native-web also reports hover and keyboard focus to Pressable styles
+type PressState = PressableStateCallbackType & { hovered?: boolean; focused?: boolean };
+
+/** Shadow and glass blur for a raised surface, from the theme's tokens. */
+export function raised(p: Palette): ViewStyle {
+  const s: Record<string, unknown> = {};
+  if (p.shadow !== 'none') s.boxShadow = p.shadow;
+  if (Platform.OS === 'web' && p.blur > 0) {
+    s.backdropFilter = `blur(${p.blur}px)`;
+    s.WebkitBackdropFilter = `blur(${p.blur}px)`;
+  }
+  return s as ViewStyle;
+}
+
+/** A themed surface: glass card, outlined panel or solid block, depending on the theme. */
+export function surface(p: Palette, reading = false): ViewStyle {
+  return {
+    backgroundColor: reading ? p.cardAlt : p.card,
+    borderColor: p.line,
+    borderWidth: p.border,
+    borderRadius: p.radius,
+    ...raised(p),
+  };
+}
+
+/** The page canvas: a gradient with two soft lights, drawn behind everything else. */
+export function Ambient() {
+  const p = usePalette();
+  const layers = [
+    p.glowA !== 'transparent' ? `radial-gradient(circle at 12% 0%, ${p.glowA} 0%, transparent 55%)` : null,
+    p.glowB !== 'transparent' ? `radial-gradient(circle at 100% 38%, ${p.glowB} 0%, transparent 52%)` : null,
+    `linear-gradient(165deg, ${p.bg2} 0%, ${p.bg} 60%, ${p.bg} 100%)`,
+  ].filter(Boolean);
+  return (
+    <View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, { backgroundColor: p.bg, backgroundImage: layers.join(', ') } as ViewStyle]}
+    />
+  );
+}
+
+/** True when the person has asked their phone or browser for less motion. */
+export function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduced).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
+    return () => sub.remove();
+  }, []);
+  return reduced;
+}
 
 export function Btn(props: {
   label: string; onPress: () => void; kind?: 'primary' | 'ghost' | 'danger' | 'warm';
@@ -11,34 +66,54 @@ export function Btn(props: {
 }) {
   const p = usePalette();
   const kind = props.kind ?? 'primary';
+  const solid = kind !== 'ghost';
   const bg = kind === 'primary' ? p.accent : kind === 'danger' ? p.danger : kind === 'warm' ? p.warm : 'transparent';
   const fg = kind === 'ghost' ? p.text : kind === 'primary' ? p.accentText : '#1A1206';
+  const radius = props.small ? Math.max(10, p.radius - 8) : Math.max(12, p.radius - 6);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={props.label}
+      accessibilityState={{ disabled: !!props.disabled }}
       disabled={props.disabled}
       onPress={props.onPress}
-      style={({ pressed }) => [
-        styles.btn,
-        props.small && styles.btnSmall,
-        { backgroundColor: bg, borderColor: kind === 'ghost' ? p.line : bg, opacity: props.disabled ? 0.4 : pressed ? 0.75 : 1 },
-        props.style,
-      ]}
+      style={(state) => {
+        const { pressed, hovered } = state as PressState;
+        return [
+          styles.btn,
+          props.small && styles.btnSmall,
+          {
+            borderRadius: radius,
+            borderWidth: p.border,
+            backgroundColor: solid ? bg : pressed || hovered ? p.card : 'transparent',
+            borderColor: solid ? bg : p.line,
+            opacity: props.disabled ? 0.42 : pressed ? 0.82 : 1,
+          },
+          solid && !props.disabled && p.shadow !== 'none' ? ({ boxShadow: `0px 4px 14px ${hexAlpha(bg, 0.28)}` } as ViewStyle) : null,
+          hovered && solid && !props.disabled ? { opacity: 0.92 } : null,
+          props.style,
+        ];
+      }}
     >
-      <Text style={{ color: fg, fontWeight: '700', fontSize: props.small ? 13 : 15 }}>{props.label}</Text>
+      <Text style={{ color: fg, fontWeight: '700', fontSize: props.small ? 14 : 15, letterSpacing: 0.1 }}>{props.label}</Text>
     </Pressable>
   );
 }
 
-export function Card(props: { children: React.ReactNode; style?: ViewStyle }) {
+/** '#RRGGBB' + alpha → rgba(); anything else is returned unchanged. */
+function hexAlpha(color: string, alpha: number): string {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
+  return m ? `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})` : color;
+}
+
+export function Card(props: { children: React.ReactNode; style?: ViewStyle; reading?: boolean }) {
   const p = usePalette();
-  return <View style={[styles.card, { backgroundColor: p.card, borderColor: p.line }, props.style]}>{props.children}</View>;
+  return <View style={[styles.card, surface(p, props.reading), props.style]}>{props.children}</View>;
 }
 
 export function Label(props: { children: React.ReactNode }) {
   const p = usePalette();
-  return <Text style={{ color: p.sub, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>{props.children}</Text>;
+  return <Text style={{ color: p.sub, fontSize: 12, fontWeight: '700', letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 8 }}>{props.children}</Text>;
 }
 
 export function ToggleRow(props: { title: string; hint?: string; value: boolean; onChange: (v: boolean) => void }) {
@@ -47,9 +122,15 @@ export function ToggleRow(props: { title: string; hint?: string; value: boolean;
     <View style={styles.row}>
       <View style={{ flex: 1, paddingRight: 12 }}>
         <Text style={{ color: p.text, fontSize: 15, fontWeight: '600' }}>{props.title}</Text>
-        {props.hint ? <Text style={{ color: p.sub, fontSize: 12, marginTop: 2 }}>{props.hint}</Text> : null}
+        {props.hint ? <Text style={{ color: p.sub, fontSize: 13, marginTop: 2, lineHeight: 18 }}>{props.hint}</Text> : null}
       </View>
-      <Switch value={props.value} onValueChange={props.onChange} trackColor={{ true: p.accent, false: p.line }} thumbColor="#fff" />
+      <Switch
+        accessibilityLabel={props.title}
+        value={props.value}
+        onValueChange={props.onChange}
+        trackColor={{ true: p.accent, false: p.line }}
+        thumbColor="#FFFFFF"
+      />
     </View>
   );
 }
@@ -66,21 +147,36 @@ export function Stepper(props: { title: string; value: string; onMinus: () => vo
   );
 }
 
+/** Pill choices. The selected one is filled, thicker-edged and ticked, so it never relies on colour alone. */
 export function Choice<T extends string>(props: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
   const p = usePalette();
   return (
-    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+    <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
       {props.options.map((o) => {
         const on = o.value === props.value;
         return (
           <Pressable
             key={o.value}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on, checked: on }}
+            accessibilityLabel={o.label}
             onPress={() => props.onChange(o.value)}
-            style={[styles.chip, { backgroundColor: on ? p.accent : p.cardAlt, borderColor: on ? p.accent : p.line }]}
+            style={(state) => {
+              const { pressed, hovered } = state as PressState;
+              return [
+                styles.chip,
+                {
+                  backgroundColor: on ? p.accent : hovered || pressed ? p.card : p.cardAlt,
+                  borderColor: on ? p.accent : p.line,
+                  borderWidth: on ? p.borderOn : p.border,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ];
+            }}
           >
-            <Text style={{ color: on ? p.accentText : p.text, fontWeight: '600', fontSize: 13 }}>{o.label}</Text>
+            <Text style={{ color: on ? p.accentText : p.text, fontWeight: on ? '800' : '600', fontSize: 14 }}>
+              {on ? '✓ ' : ''}{o.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -98,6 +194,7 @@ export function LangButton(props: {
   caption?: string;
 }) {
   const p = usePalette();
+  const reduced = useReducedMotion();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const data = useMemo(() => {
@@ -114,20 +211,34 @@ export function LangButton(props: {
         accessibilityRole="button"
         accessibilityLabel={`${props.caption ?? t('Language')}: ${nameOf(props.code)}`}
         onPress={() => setOpen(true)}
-        style={[styles.lang, { backgroundColor: p.cardAlt, borderColor: p.line }, props.style]}
+        style={(state) => {
+          const { pressed, hovered } = state as PressState;
+          return [
+            styles.lang,
+            surface(p, true),
+            { borderRadius: Math.max(12, p.radius - 6), opacity: pressed ? 0.85 : 1 },
+            hovered ? { borderColor: p.accent } : null,
+            props.style,
+          ];
+        }}
       >
-        {props.caption ? <Text style={{ color: p.sub, fontSize: 11 }}>{props.caption}</Text> : null}
-        <Text numberOfLines={1} style={{ color: p.text, fontWeight: '700', fontSize: 15 }}>{nameOf(props.code)}</Text>
+        {/* the arrow sits beside the caption so long language names keep the full width */}
+        <Text style={{ color: p.sub, fontSize: 12, fontWeight: '600' }}>
+          {props.caption ? props.caption + '  ' : ''}▾
+        </Text>
+        <Text numberOfLines={1} style={{ color: p.text, fontWeight: '800', fontSize: 16 }}>{nameOf(props.code)}</Text>
       </Pressable>
-      <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} animationType={reduced ? 'none' : 'slide'} onRequestClose={() => setOpen(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
+          <Ambient />
           <View style={{ flexDirection: 'row', padding: 12, gap: 8, alignItems: 'center' }}>
             <TextInput
               value={q}
               onChangeText={setQ}
               placeholder={t('Search languages')}
               placeholderTextColor={p.sub}
-              style={[styles.input, { flex: 1, color: p.text, borderColor: p.line, backgroundColor: p.card }]}
+              accessibilityLabel={t('Search languages')}
+              style={[styles.input, { flex: 1, color: p.text, borderColor: p.line, backgroundColor: p.cardAlt, borderRadius: Math.max(12, p.radius - 6) }]}
             />
             <Btn small kind="ghost" label={t('Close')} onPress={() => setOpen(false)} />
           </View>
@@ -135,20 +246,31 @@ export function LangButton(props: {
             data={data}
             keyExtractor={(l) => l.code}
             keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => {
-                  props.onChange(item.code);
-                  setOpen(false);
-                  setQ('');
-                }}
-                style={{ paddingVertical: 14, paddingHorizontal: 18, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: p.line }}
-              >
-                <Text style={{ color: item.code === props.code ? p.accent : p.text, fontSize: 16, fontWeight: item.code === props.code ? '700' : '400' }}>
-                  {nameOf(item.code)}
-                </Text>
-              </Pressable>
-            )}
+            renderItem={({ item }) => {
+              const on = item.code === props.code;
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  onPress={() => {
+                    props.onChange(item.code);
+                    setOpen(false);
+                    setQ('');
+                  }}
+                  style={(state) => {
+                    const { pressed, hovered } = state as PressState;
+                    return {
+                      flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 18,
+                      borderBottomWidth: StyleSheet.hairlineWidth, borderColor: p.line,
+                      backgroundColor: on ? p.cardAlt : pressed || hovered ? p.card : 'transparent',
+                    };
+                  }}
+                >
+                  <Text style={{ flex: 1, color: on ? p.accent : p.text, fontSize: 16, fontWeight: on ? '800' : '400' }}>{nameOf(item.code)}</Text>
+                  {on ? <Text style={{ color: p.accent, fontSize: 16, fontWeight: '800' }}>✓</Text> : null}
+                </Pressable>
+              );
+            }}
           />
         </SafeAreaView>
       </Modal>
@@ -159,15 +281,27 @@ export function LangButton(props: {
 export function ErrorText(props: { children?: string | null }) {
   const p = usePalette();
   if (!props.children) return null;
-  return <Text accessibilityRole="alert" style={{ color: p.danger, fontSize: 13, marginVertical: 6 }}>{props.children}</Text>;
+  return <Text accessibilityRole="alert" style={{ color: p.danger, fontSize: 13, marginVertical: 6 }}>⚠ {props.children}</Text>;
+}
+
+/** Small status pill: a dot plus text, so the meaning does not depend on colour. */
+export function Badge(props: { label: string; tone?: 'accent' | 'ok' | 'warm' | 'muted' }) {
+  const p = usePalette();
+  const c = props.tone === 'ok' ? p.ok : props.tone === 'warm' ? p.warm : props.tone === 'muted' ? p.sub : p.accent;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999, borderWidth: p.border, borderColor: c }}>
+      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c }} />
+      <Text style={{ color: c, fontSize: 12, fontWeight: '700' }}>{props.label}</Text>
+    </View>
+  );
 }
 
 export const styles = StyleSheet.create({
-  btn: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', minHeight: 46 },
-  btnSmall: { paddingVertical: 8, paddingHorizontal: 12, minHeight: 36, borderRadius: 10 },
-  card: { borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 8 },
-  chip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1 },
-  lang: { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, minHeight: 46, justifyContent: 'center' },
+  btn: { paddingVertical: 12, paddingHorizontal: 18, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
+  btnSmall: { paddingVertical: 8, paddingHorizontal: 14, minHeight: 44, borderRadius: 12 },
+  card: { borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 8, minHeight: 48 },
+  chip: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, minHeight: 40, justifyContent: 'center' },
+  lang: { flex: 1, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1, minHeight: 56, justifyContent: 'center' },
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
 });

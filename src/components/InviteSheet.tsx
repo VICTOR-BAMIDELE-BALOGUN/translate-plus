@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Platform, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
-import { Btn, Card, Choice, ErrorText, Label, styles } from './ui';
+import { Btn, Card, Choice, ErrorText, Label, styles, Ambient } from './ui';
 import { usePalette } from '../theme';
 import { getSettings, useSettings, type Room } from '../store';
 import { buildInviteLink, defaultLinkBase } from '../invite';
@@ -86,6 +86,7 @@ export default function InviteSheet(props: { room: Room | null; onClose: () => v
   return (
     <Modal visible={!!room} animationType="slide" onRequestClose={props.onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
+        <Ambient />
         <ScrollView contentContainerStyle={{ padding: 18 }} keyboardShouldPersistTaps="handled">
           <Text style={{ color: p.text, fontSize: 22, fontWeight: '800', marginBottom: 4 }}>{t('Invite {n}', { n: room?.name ?? '' })}</Text>
           <Text style={{ color: p.sub, fontSize: 13, marginBottom: 16, lineHeight: 19 }}>{t('Written in {lang}, the language they speak, so the first thing they read makes sense to them.', { lang: langName(lang) })}</Text>
